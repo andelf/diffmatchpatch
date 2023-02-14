@@ -2,11 +2,11 @@
 name = "diffmatchpatch"
 publish = true
 edition = "2021"
-version = "0.1.2"
-authors = ["Tobie Morgan Hitchcock <tobie@surrealdb.com>"]
-description = "A high-performance library in that manipulates plain text"
-homepage = "https://github.com/surrealdb/dmp"
-repository = "https://github.com/surrealdb/dmp"
+version = "0.0.1"
+authors = ["Andelf <andelf@gmail.com>"]
+description = "Rewrite of diff-match-patch in Rust"
+homepage = "https://github.com/andelf/dmp"
+repository = "https://github.com/andelf/dmp"
 keywords = ["dmp", "diff", "diff-match-patch"]
 categories = ["algorithms", "text-editors", "text-processing"]
 license = "MIT"
@@ -14,3 +14,10 @@ license = "MIT"
 [dependencies]
 urlencoding = "2.1.2"
 regex = "1.7.1"
+
+[dev-dependencies]
+criterion = "0.4.0"
+
+[[bench]]
+name = "speedtest"
+harness = false

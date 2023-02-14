@@ -10,7 +10,6 @@ use urlencoding::{decode, encode};
 
 use self::Operation::*;
 
-
 pub trait ToChars {
     fn to_chars(&self) -> Vec<char>;
 }
@@ -26,7 +25,6 @@ impl ToChars for &str {
         self.chars().collect()
     }
 }
-
 
 pub enum LengthUnit {
     UnicodeScalar,
@@ -390,7 +388,7 @@ impl DiffMatchPatch {
     Returns:
         the first index where patern is found or -1 if not found.
     */
-    fn kmp(&mut self, text1: &Vec<char>, text2: &Vec<char>, ind: usize) -> i32 {
+    fn kmp(&self, text1: &[char], text2: &[char], ind: usize) -> i32 {
         if text2.is_empty() {
             return ind as i32;
         }
@@ -1024,34 +1022,37 @@ impl DiffMatchPatch {
         len
     }
 
-    pub fn diff_common_overlap(&mut self, text1: &Vec<char>, text2: &Vec<char>) -> i32 {
-        /*
-          Determine if the suffix of one chars is the prefix of another.
+    /*
+      Determine if the suffix of one chars is the prefix of another.
 
-          Args:
-              text1 First chars.
-              text2 Second chars.
+      Args:
+          text1 First chars.
+          text2 Second chars.
 
-          Returns:
-              The number of characters common to the end of the first
-              chars and the start of the second chars.
-        */
-        let text1_length = text1.len();
-        let text2_length = text2.len();
-        if text1_length == 0 || text2_length == 0 {
+      Returns:
+          The number of characters common to the end of the first
+          chars and the start of the second chars.
+    */
+    pub fn diff_common_overlap<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
+        let text1 = text1.as_ref();
+        let text2 = text2.as_ref();
+
+        // Eliminate the null case.
+        if text1.is_empty()  || text2.is_empty() {
             return 0;
         }
+
         let text1_trunc;
         let text2_trunc;
-        let len = min(text1_length as i32, text2_length as i32);
+        let len = text1.len().min(text2.len());
 
         // Truncate the longer chars.
         if text1.len() > text2.len() {
-            text1_trunc = text1[(text1_length - text2_length)..].to_vec();
-            text2_trunc = text2[..].to_vec();
+            text1_trunc = &text1[(text1.len() - text2.len())..];
+            text2_trunc = &text2[..];
         } else {
-            text1_trunc = text1[..].to_vec();
-            text2_trunc = text2[0..text1_length].to_vec();
+            text1_trunc = &text1[..];
+            text2_trunc = &text2[0..text1.len()];
         }
         let mut best = 0;
         let mut length = 1;
@@ -1059,18 +1060,18 @@ impl DiffMatchPatch {
         if text1_trunc == text2_trunc {
             return len;
         }
-        /*Start by looking for a single character match
-        and increase length until no match is found.
-        Performance analysis: https://neil.fraser.name/news/2010/11/04/ */
+        // Start by looking for a single character match
+        // and increase length until no match is found.
+        // Performance analysis: https://neil.fraser.name/news/2010/11/04/
         loop {
-            let patern = text1_trunc[(len as usize - length)..(len as usize)].to_vec();
-            let found = self.kmp(&text2_trunc, &patern, 0);
+            let patern = &text1_trunc[(len as usize - length)..(len as usize)];
+            let found = self.kmp(text2_trunc, patern, 0);
             if found == -1 {
                 return best;
             }
             length += found as usize;
             if found == 0 {
-                best = length as i32;
+                best = length;
                 length += 1;
             }
         }
@@ -1329,8 +1330,8 @@ impl DiffMatchPatch {
             {
                 let deletion_vec: Vec<char> = diffs[pointer as usize - 1].text.chars().collect();
                 let insertion_vec: Vec<char> = diffs[pointer as usize].text.chars().collect();
-                overlap_length1 = self.diff_common_overlap(&deletion_vec, &insertion_vec);
-                overlap_length2 = self.diff_common_overlap(&insertion_vec, &deletion_vec);
+                overlap_length1 = self.diff_common_overlap(&deletion_vec, &insertion_vec) as i32; // TODO: fix type
+                overlap_length2 = self.diff_common_overlap(&insertion_vec, &deletion_vec) as i32;
                 if overlap_length1 >= overlap_length2 {
                     if (overlap_length1 as f32) >= (deletion_vec.len() as f32 / 2.0)
                         || (overlap_length1 as f32) >= (insertion_vec.len() as f32 / 2.0)
