@@ -10,6 +10,24 @@ use urlencoding::{decode, encode};
 
 use self::Operation::*;
 
+
+pub trait ToChars {
+    fn to_chars(&self) -> Vec<char>;
+}
+
+impl ToChars for String {
+    fn to_chars(&self) -> Vec<char> {
+        self.chars().collect()
+    }
+}
+
+impl ToChars for &str {
+    fn to_chars(&self) -> Vec<char> {
+        self.chars().collect()
+    }
+}
+
+
 pub enum LengthUnit {
     UnicodeScalar,
     UTF16,
@@ -954,7 +972,9 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the start of each chars.
     */
-    pub fn diff_common_prefix(&mut self, text1: &[char], text2: &[char]) -> usize {
+    pub fn diff_common_prefix<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
+        let text1 = text1.as_ref();
+        let text2 = text2.as_ref();
         // Quick check for common null cases
         if text1.is_empty() || text2.is_empty() || text1[0] != text2[0] {
             return 0;
@@ -982,15 +1002,18 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the end of each chars.
     */
-    pub fn diff_common_suffix(&mut self, text1: &Vec<char>, text2: &Vec<char>) -> usize {
+    pub fn diff_common_suffix<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
+        let text1 = text1.as_ref();
+        let text2 = text2.as_ref();
+
         if text1.is_empty() || text2.is_empty() {
             return 0;
         }
-        let mut pointer_1 = text1.len() - 1;
-        let mut pointer_2 = text2.len() - 1;
+        let mut pointer_1 = (text1.len() - 1) as isize;
+        let mut pointer_2 = (text2.len() - 1) as isize;
         let mut len = 0;
         while pointer_1 >= 0 && pointer_2 >= 0 {
-            if text1[pointer_1] == text2[pointer_2] {
+            if text1[pointer_1 as usize] == text2[pointer_2 as usize] {
                 len += 1;
             } else {
                 break;
