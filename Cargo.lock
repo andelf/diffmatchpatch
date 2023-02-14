@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dmp"
+name = "diffmatchpatch"
 version = "0.1.2"
 dependencies = [
  "regex",
