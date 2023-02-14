@@ -19,6 +19,6 @@ This code is forked originally from [dmp](https://github.com/surrealdb/dmp), lic
 Python3 Elapsed Time: 8.695004s
 JS(Chrome) Time: 0.469s
 
-```
+```text
 speedtest               time:   [147.20 ms 147.24 ms 147.29 ms]
 ```

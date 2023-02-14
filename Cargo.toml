@@ -2,7 +2,7 @@
 name = "diffmatchpatch"
 publish = true
 edition = "2021"
-version = "0.0.1"
+version = "0.0.0"
 authors = ["Andelf <andelf@gmail.com>"]
 description = "Rewrite of diff-match-patch in Rust"
 homepage = "https://github.com/andelf/dmp"
