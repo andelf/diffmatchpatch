@@ -5,6 +5,7 @@ use std::{collections::HashMap, iter::FromIterator, result::Result, time::Durati
 pub use chars::Chars;
 
 pub mod chars;
+mod r#match;
 
 pub trait ToChars {
     fn to_chars(&self) -> Vec<char>;
@@ -71,6 +72,7 @@ pub enum Diff {
 }
 
 impl Diff {
+    /// Placeholder for variable
     pub(crate) const fn empty() -> Self {
         Diff::Equal(Chars::new())
     }
@@ -260,18 +262,18 @@ impl DiffMatchPatch {
         None
     }
 
-    fn rkmp(&mut self, text1: &Vec<char>, text2: &Vec<char>, ind: usize) -> Option<usize> {
-        /*
-        Find the last index before a specific index in text1 where patern is present.
+    /**
+    Find the last index before a specific index in text1 where patern is present.
 
-        Args:
-            text1: Parent chars.
-            text2: Patern chars.
-            ind: index just before we have to find the patern.
+    Args:
+        text1: Parent chars.
+        text2: Patern chars.
+        ind: index just before we have to find the patern.
 
-        Returns:
-            the last index where patern is found or -1 if not found.
-        */
+    Returns:
+        the last index where patern is found or -1 if not found.
+    */
+    fn rkmp(&mut self, text1: &[char], text2: &[char], ind: usize) -> Option<usize> {
         if text2.is_empty() {
             return Some(ind);
         }
@@ -1278,7 +1280,16 @@ impl DiffMatchPatch {
         levenshtein
     }
 
+    pub fn diff_to_delta(&self, _diffs: &[Diff]) -> String {
+        unimplemented!()
+    }
+
+    pub fn diff_from_delta(&self, _text1: &mut Chars, _delta: &str) {
+        unimplemented!()
+    }
+
     // unimplemented:
     // DiffPrettyHtml
-    // DiffDelta
+    // DiffToDelta
+    // DiffBisect
 }

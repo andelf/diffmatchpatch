@@ -22,7 +22,7 @@ impl ToCharsVec for [&str; 5] {
 }
 
 #[test]
-fn test_diff_common_prefix() {
+fn diff_common_prefix() {
     let dmp = DiffMatchPatch::new();
 
     assert_eq!(0, dmp.diff_common_prefix("abc".to_chars(), "xyz".to_chars()));
@@ -31,7 +31,7 @@ fn test_diff_common_prefix() {
 }
 
 #[test]
-fn test_diff_common_suffix() {
+fn diff_common_suffix() {
     let dmp = DiffMatchPatch::new();
 
     assert_eq!(0, dmp.diff_common_suffix("abc".to_chars(), "xyz".to_chars()));
@@ -40,7 +40,7 @@ fn test_diff_common_suffix() {
 }
 
 #[test]
-fn test_diff_common_overlap() {
+fn diff_common_overlap() {
     let dmp = DiffMatchPatch::new();
 
     assert_eq!(0, dmp.diff_common_overlap("".to_chars(), "abcd".to_chars()), "null case");
@@ -53,7 +53,7 @@ fn test_diff_common_overlap() {
 }
 
 #[test]
-fn test_diff_half_match() {
+fn diff_half_match() {
     // Detect a halfmatch
     let mut dmp = DiffMatchPatch::new();
     dmp.diff_timeout = Some(Duration::from_secs(1));
@@ -172,7 +172,7 @@ fn test_diff_half_match() {
 }
 
 #[test]
-pub fn test_diff_lines_to_chars() {
+pub fn diff_lines_to_chars() {
     let dmp = DiffMatchPatch::new();
 
     const CASES: &[(&str, &str, &str, &str, &[&str])] = &[
@@ -205,7 +205,7 @@ pub fn test_diff_lines_to_chars() {
 }
 
 #[test]
-fn test_diff_chars_to_lines() {
+fn diff_chars_to_lines() {
     let dmp = DiffMatchPatch::new();
 
     // Convert chars up to lines.
@@ -234,7 +234,7 @@ fn test_diff_chars_to_lines() {
 }
 
 #[test]
-fn test_diff_cleanup_merge() {
+fn diff_cleanup_merge() {
     use Diff::*;
     // Cleanup a messy diff
     let dmp = DiffMatchPatch::new();
@@ -325,7 +325,7 @@ fn test_diff_cleanup_merge() {
 }
 
 #[test]
-fn test_diff_cleanup_semantic_lossless() {
+fn diff_cleanup_semantic_lossless() {
     use Diff::*;
 
     // Slide diffs to match logical boundaries.
@@ -425,7 +425,7 @@ fn test_diff_cleanup_semantic_lossless() {
 }
 
 #[test]
-fn test_diff_cleanup_semantic() {
+fn diff_cleanup_semantic() {
     // Cleanup semantically trivial equalities.
     use Diff::*;
 
@@ -613,7 +613,7 @@ fn test_diff_cleanup_semantic() {
 }
 
 #[test]
-fn test_diff_cleanup_efficiency() {
+fn diff_cleanup_efficiency() {
     // Cleanup operationally trivial equalities.
     let mut dmp = DiffMatchPatch::new();
     dmp.edit_cost = 4;
@@ -725,7 +725,7 @@ fn test_diff_cleanup_efficiency() {
 }
 
 #[test]
-fn test_diff_text() {
+fn diff_text() {
     // Compute the source and destination texts.
     let dmp = DiffMatchPatch::new();
 
@@ -743,7 +743,7 @@ fn test_diff_text() {
 }
 
 #[test]
-fn test_diff_xindex() {
+fn diff_xindex() {
     // Translate a location in text1 to text2.
 
     let dmp = DiffMatchPatch::new();
@@ -759,7 +759,7 @@ fn test_diff_xindex() {
 }
 
 #[test]
-fn test_diff_levenshtein() {
+fn diff_levenshtein() {
     let dmp = DiffMatchPatch::new();
     /*
      # Levenshtein with trailing equality.
