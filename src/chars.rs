@@ -5,11 +5,11 @@ use std::{
 };
 
 /// A String with char as underlying type.
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Default)]
 pub struct Chars(Vec<char>);
 
 impl Chars {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Chars(Vec::new())
     }
 

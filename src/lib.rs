@@ -71,6 +71,10 @@ pub enum Diff {
 }
 
 impl Diff {
+    pub(crate) const fn empty() -> Self {
+        Diff::Equal(Chars::new())
+    }
+
     pub fn text(&self) -> &Chars {
         match self {
             Diff::Delete(text) => text,
@@ -1164,12 +1168,13 @@ impl DiffMatchPatch {
     }
 
     /**
-    Compute and return the source text (all equalities and deletions).
+      Compute and return the source text (all equalities and deletions).
 
-    Args:
-        diffs: Array of diff tuples.
-    Returns:
-        Source text.
+      Args:
+          diffs: Vectoe of diff object.
+
+      Returns:
+          Source text.
     */
     pub fn diff_text1(&self, diffs: &[Diff]) -> Chars {
         let mut text = Chars::new();
@@ -1182,13 +1187,14 @@ impl DiffMatchPatch {
     }
 
     /**
-    Compute and return the destination text (all equalities and insertions).
+      Compute and return the destination text (all equalities and insertions).
 
-    Args:
-        diffs: Array of diff tuples.
-    Returns:
-        Destination text.
-     */
+      Args:
+          diffs: Vector of diff object.
+
+      Returns:
+          destination text.
+    */
     pub fn diff_text2(&self, diffs: &[Diff]) -> Chars {
         let mut text = Chars::new();
         for d in diffs {
@@ -1199,6 +1205,50 @@ impl DiffMatchPatch {
         text
     }
 
+    /**
+    loc is a location in text1, compute and return the equivalent location
+    in text2.  e.g. "The cat" vs "The big cat", 1->1, 5->8
+
+    Args:
+        diffs: Vector of diff object.
+        loc: Location within text1.
+
+    Returns:
+        Location within text2.
+    */
+    pub fn diff_xindex(&self, diffs: &[Diff], loc: usize) -> usize {
+        let mut chars1 = 0;
+        let mut chars2 = 0;
+        let mut last_chars1 = 0;
+        let mut last_chars2 = 0;
+        let mut lastdiff = Diff::Equal("".into());
+        let z = 0;
+        for diffs_item in diffs {
+            if !diffs_item.is_insert() {
+                // Equality or deletion.
+                chars1 += diffs_item.text().len();
+            }
+            if !diffs_item.is_delete() {
+                // Equality or insertion.
+                chars2 += diffs_item.text().len();
+            }
+            if chars1 > loc {
+                // Overshot the location.
+                lastdiff = diffs_item.clone();
+                break;
+            }
+            last_chars1 = chars1;
+            last_chars2 = chars2;
+        }
+        if lastdiff.is_delete() && diffs.len() != z {
+            // The location was deleted.
+            return last_chars2;
+        }
+        // Add the remaining len(character).
+        last_chars2 + (loc - last_chars1)
+    }
+
     // unimplemented:
     // DiffPrettyHtml
+    // DiffDelta
 }

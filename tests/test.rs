@@ -746,3 +746,19 @@ fn test_diff_text() {
     assert_eq!(Chars::from("jumps over the lazy"), dmp.diff_text1(&diffs));
     assert_eq!(Chars::from("jumped over a lazy"), dmp.diff_text2(&diffs));
 }
+
+#[test]
+fn test_diff_xindex() {
+    // Translate a location in text1 to text2.
+
+    let dmp = DiffMatchPatch::new();
+
+    //self.assertEqual(5, self.dmp.diff_xIndex([(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_INSERT, "1234"), (self.dmp.DIFF_EQUAL, "xyz")], 2))
+    let diffs = vec![Delete("a".into()), Insert("1234".into()), Equal("xyz".into())];
+    assert_eq!(5, dmp.diff_xindex(&diffs, 2));
+
+    // Translation on deletion.
+    //self.assertEqual(1, self.dmp.diff_xIndex([(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "1234"), (self.dmp.DIFF_EQUAL, "xyz")], 3))
+    let diffs = vec![Equal("a".into()), Delete("1234".into()), Equal("xyz".into())];
+    assert_eq!(1, dmp.diff_xindex(&diffs, 3));
+}
