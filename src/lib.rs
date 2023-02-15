@@ -985,9 +985,8 @@ impl DiffMatchPatch {
                         Diff::Delete(last_equality.clone()),
                     );
                     // Change second copy to insert.
-                    diffs[equalities[equalities.len() - 1] + 1] = Diff::Insert(
-                        diffs[equalities[equalities.len() - 1] + 1].text().into(),
-                    );
+                    diffs[equalities[equalities.len() - 1] + 1] =
+                        Diff::Insert(diffs[equalities[equalities.len() - 1] + 1].text().into());
                     // Throw away the equality we just deleted.
                     equalities.pop();
                     // Throw away the previous equality (it needs to be reevaluated).
@@ -1002,6 +1001,7 @@ impl DiffMatchPatch {
                     last_equality = Chars::new();
                     changes = true;
 
+                    // NOT: reordered control flow, to use continue
                     if !equalities.is_empty() {
                         i = equalities[equalities.len() - 1];
                     } else {
@@ -1036,10 +1036,7 @@ impl DiffMatchPatch {
                         || (overlap_length1 as f32) >= (insertion.len() as f32 / 2.0)
                     {
                         // Overlap found.  Insert an equality and trim the surrounding edits.
-                        diffs.insert(
-                            i,
-                            Diff::Equal(insertion[..overlap_length1].into()),
-                        );
+                        diffs.insert(i, Diff::Equal(insertion[..overlap_length1].into()));
                         diffs[i - 1] =
                             Diff::Delete(deletion[..deletion.len() - overlap_length1].into());
                         diffs[i + 1] = Diff::Insert(insertion[overlap_length1..].into());
@@ -1075,23 +1072,21 @@ impl DiffMatchPatch {
             return;
         }
         let mut changes: bool = false;
-        let mut equalities: Vec<i32> = vec![]; // Stack of indices where equalities are found.
+        let mut equalities: Vec<usize> = vec![]; // Stack of indices where equalities are found.
         let mut last_equality = Chars::new(); // Always equal to diffs[equalities[-1]][1]
-        let mut i: i32 = 0; // Index of current position.
+        let mut i: usize = 0; // Index of current position.
         let mut pre_ins = false; // Is there an insertion operation before the last equality.
         let mut pre_del = false; // Is there a deletion operation before the last equality.
         let mut post_ins = false; // Is there an insertion operation after the last equality.
         let mut post_del = false; // Is there a deletion operation after the last equality.
-        while (i as usize) < diffs.len() {
-            if diffs[i as usize].is_equal() {
-                if diffs[i as usize].text().len() < self.edit_cost as usize
-                    && (post_del || post_ins)
-                {
+        while i < diffs.len() {
+            if diffs[i].is_equal() {
+                if diffs[i].text().len() < self.edit_cost as usize && (post_del || post_ins) {
                     // Candidate found.
                     equalities.push(i);
                     pre_ins = post_ins;
                     pre_del = post_del;
-                    last_equality = diffs[i as usize].text().clone();
+                    last_equality = diffs[i].text().clone();
                 } else {
                     // Not a candidate, and can never become one.
                     equalities = vec![];
@@ -1101,7 +1096,7 @@ impl DiffMatchPatch {
                 post_del = false;
             } else {
                 // An insertion or deletion.
-                if diffs[i as usize].is_delete() {
+                if diffs[i].is_delete() {
                     post_del = true;
                 } else {
                     post_ins = true;
@@ -1127,13 +1122,12 @@ impl DiffMatchPatch {
                 {
                     // Duplicate record.
                     diffs.insert(
-                        equalities[equalities.len() - 1] as usize,
+                        equalities[equalities.len() - 1],
                         Diff::Delete(last_equality.clone()),
                     );
                     // Change second copy to insert.
-                    diffs[equalities[equalities.len() - 1] as usize + 1] = Diff::Insert(
-                        diffs[equalities[equalities.len() - 1] as usize + 1].text().clone(),
-                    );
+                    diffs[equalities[equalities.len() - 1] + 1] =
+                        Diff::Insert(diffs[equalities[equalities.len() - 1] + 1].text().clone());
                     equalities.pop(); // Throw away the equality we just deleted.
 
                     last_equality.clear();
@@ -1149,7 +1143,12 @@ impl DiffMatchPatch {
                         if !equalities.is_empty() {
                             i = equalities[equalities.len() - 1];
                         } else {
-                            i = -1;
+                            i = 0;
+                            // FIXME: reorder control flow
+                            post_ins = false;
+                            post_del = false;
+                            changes = true;
+                            continue;
                         }
                         post_ins = false;
                         post_del = false;
