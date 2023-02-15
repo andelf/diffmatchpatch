@@ -1,10 +1,10 @@
 use std::{
     borrow::Borrow,
-    fmt,
-    ops::{Deref, DerefMut},
+    fmt, mem,
+    ops::{self, Deref, DerefMut},
 };
 
-/// A String with char
+/// A String with char as underlying type.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Chars(Vec<char>);
 
@@ -12,11 +12,50 @@ impl Chars {
     pub fn new() -> Self {
         Chars(Vec::new())
     }
+
+    pub fn push(&mut self, c: char) {
+        self.0.push(c)
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    pub fn take(&mut self) -> Self {
+        Chars(mem::take(&mut self.0))
+    }
+
+    /// Slice with negative index support
+    pub(crate) fn slice_to(&self, i: isize) -> &[char] {
+        if i < 0 {
+            &self[..self.len() - (i.abs() as usize)]
+        } else {
+            &self[..i as usize]
+        }
+    }
 }
 
 impl PartialEq<[char]> for Chars {
     fn eq(&self, other: &[char]) -> bool {
         self.0 == other
+    }
+}
+
+impl PartialEq<[char]> for &Chars {
+    fn eq(&self, other: &[char]) -> bool {
+        &*self.0 == other
+    }
+}
+
+impl PartialEq<Vec<char>> for Chars {
+    fn eq(&self, other: &Vec<char>) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<Vec<char>> for &Chars {
+    fn eq(&self, other: &Vec<char>) -> bool {
+        &self.0 == other
     }
 }
 
@@ -35,6 +74,12 @@ impl From<&str> for Chars {
 impl From<&[char]> for Chars {
     fn from(s: &[char]) -> Self {
         Chars(s.to_vec())
+    }
+}
+
+impl From<Vec<char>> for Chars {
+    fn from(s: Vec<char>) -> Self {
+        Chars(s)
     }
 }
 
@@ -81,3 +126,38 @@ impl Borrow<[char]> for Chars {
         &*self
     }
 }
+
+impl AsRef<[char]> for Chars {
+    fn as_ref(&self) -> &[char] {
+        &*self
+    }
+}
+
+impl ops::AddAssign<&[char]> for Chars {
+    fn add_assign(&mut self, other: &[char]) {
+        self.0.extend_from_slice(other)
+    }
+}
+
+impl ops::AddAssign<&[char]> for &mut Chars {
+    fn add_assign(&mut self, other: &[char]) {
+        self.0.extend_from_slice(other)
+    }
+}
+
+impl ops::Add<&[char]> for Chars {
+    type Output = Self;
+
+    fn add(mut self, other: &[char]) -> Self {
+        self += other;
+        self
+    }
+}
+
+/*
+impl ops::AddAssign for Chars {
+    fn add_assign(&mut self, other: Chars) {
+        self.0.extend(other.0)
+    }
+}
+*/

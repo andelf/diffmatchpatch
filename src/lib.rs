@@ -92,6 +92,32 @@ impl Diff {
             Diff::Equal(text) => text,
         }
     }
+
+    pub fn is_delete(&self) -> bool {
+        match self {
+            Diff::Delete(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_insert(&self) -> bool {
+        match self {
+            Diff::Insert(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_equal(&self) -> bool {
+        match self {
+            Diff::Equal(_) => true,
+            _ => false,
+        }
+    }
+
+    /// If the text if empty, then it's a no-op
+    pub fn is_nop(&self) -> bool {
+        self.text().is_empty()
+    }
 }
 
 #[derive(Debug)]
@@ -631,5 +657,150 @@ impl DiffMatchPatch {
             }
         }
         chars
+    }
+
+    /**
+      Reorder and merge like edit sections.  Merge equalities.
+      Any edit section can move as long as it doesn't cross an equality.
+
+      Args:
+          diffs: vectors of diff object.
+    */
+    pub fn diff_cleanup_merge(&self, diffs: &mut Vec<Diff>) {
+        if diffs.is_empty() {
+            return;
+        }
+        diffs.push(Diff::Equal("".into()));
+        let mut text_insert = Chars::new();
+        let mut text_delete = Chars::new();
+        let mut i: isize = 0;
+        let mut count_insert = 0;
+        let mut count_delete = 0;
+        while (i as usize) < diffs.len() {
+            println!("=> {}", i);
+            println!("=> {:?}", diffs);
+            if diffs[i as usize].is_delete() {
+                text_delete += &diffs[i as usize].text();
+                count_delete += 1;
+                i += 1;
+            } else if diffs[i as usize].is_insert() {
+                text_insert += &diffs[i as usize].text();
+                count_insert += 1;
+                i += 1;
+            } else {
+                // equal
+                // Upon reaching an equality, check for prior redundancies.
+                if count_delete + count_insert > 1 {
+                    if count_delete != 0 && count_insert != 0 {
+                        // Factor out any common prefixies.
+                        let mut commonlength = self.diff_common_prefix(&text_insert, &text_delete);
+                        if commonlength != 0 {
+                            let temp1 = &text_insert[..commonlength];
+                            let x = i - count_delete - count_insert - 1;
+                            if x >= 0 && diffs[x as usize].is_equal() {
+                                *diffs[x as usize].text_mut() += temp1;
+                            } else {
+                                diffs.insert(0, Diff::Equal(temp1.into()));
+                                i += 1;
+                            }
+                            text_insert = text_insert[commonlength..].into();
+                            text_delete = text_delete[commonlength..].into();
+                        }
+
+                        // Factor out any common suffixies.
+                        commonlength = self.diff_common_suffix(&text_insert, &text_delete);
+                        if commonlength != 0 {
+                            let temp2 =
+                                Chars::from(&text_insert[text_insert.len() - commonlength..])
+                                    + diffs[i as usize].text();
+                            *diffs[i as usize].text_mut() = temp2;
+                            text_insert = text_insert[..text_insert.len() - commonlength].into();
+                            text_delete = text_delete[..text_delete.len() - commonlength].into();
+                        }
+                    }
+
+                    // Delete the offending records and add the merged ones.
+                    i -= count_delete + count_insert;
+                    for _j in 0..(count_delete + count_insert) as usize {
+                        diffs.remove(i as usize);
+                    }
+                    if !text_delete.is_empty() {
+                        diffs.insert(i as usize, Diff::Delete(text_delete.clone()));
+                        i += 1;
+                    }
+                    if !text_insert.is_empty() {
+                        diffs.insert(i as usize, Diff::Insert(text_insert.clone()));
+                        i += 1;
+                    }
+                    i += 1;
+                } else if i != 0 && diffs[i as usize - 1].is_equal() {
+                    // Merge this equality with the previous one.
+                    // temp variable to avoid borrow checker
+                    let temp1 = diffs[i as usize - 1].text_mut().take() + diffs[i as usize].text();
+                    *diffs[i as usize - 1].text_mut() = temp1;
+                    diffs.remove(i as usize);
+                } else {
+                    i += 1;
+                }
+                count_delete = 0;
+                text_delete.clear();
+                text_insert.clear();
+                count_insert = 0;
+            } // equal ends
+        }
+        // Remove the dummy entry at the end.
+        if diffs[diffs.len() - 1].text().is_empty() {
+            diffs.pop();
+        }
+
+        // Second pass: look for single edits surrounded on both sides by equalities
+        // which can be shifted sideways to eliminate an equality.
+        // e.g: A<ins>BA</ins>C -> <ins>AB</ins>AC
+        let mut changes = false;
+        i = 1;
+        // Intentionally ignore the first and last element (don't need checking).
+        while (i as usize) < diffs.len() - 1 {
+            if diffs[i as usize - 1].is_equal() && diffs[i as usize + 1].is_equal() {
+                // This is a single edit surrounded by equalities.
+                if diffs[i as usize].text().ends_with(diffs[i as usize - 1].text()) {
+                    // Shift the edit over the previous equality.
+                    //  A<ins>BA</ins>C -> <ins>AB</ins>AC
+                    if !diffs[i as usize - 1].text().is_empty() {
+                        let prev = diffs[i as usize - 1].text();
+                        let next = diffs[i as usize + 1].text();
+
+                        // temp variables to eliminate borrow checker errors
+                        let temp1 = prev.to_owned()
+                            + diffs[i as usize].text().slice_to(-(prev.len() as isize));
+                        let temp2 = prev.to_owned() + next;
+                        *diffs[i as usize].text_mut() = temp1;
+                        *diffs[i as usize + 1].text_mut() = temp2;
+                    }
+
+                    diffs.remove(i as usize - 1); // remove prev
+                    changes = true;
+                } else if diffs[i as usize].text().starts_with(diffs[i as usize + 1].text()) {
+                    // Shift the edit over the next equality.
+                    //  A<ins>CB</ins>C -> AC<ins>BC</ins>
+                    let prev = diffs[i as usize - 1].text();
+                    let next = diffs[i as usize + 1].text();
+
+                    let temp1 = prev.to_owned() + next;
+                    let temp2 =
+                        Chars::from(diffs[i as usize].text()[next.len()..].to_owned()) + next;
+                    *diffs[i as usize - 1].text_mut() = temp1;
+                    *diffs[i as usize].text_mut() = temp2;
+
+                    diffs.remove(i as usize + 1);
+                    changes = true;
+                }
+            }
+            i += 1;
+        }
+
+        // If shifts were made, the diff needs reordering and another shift sweep.
+        if changes {
+            self.diff_cleanup_merge(diffs);
+        }
     }
 }

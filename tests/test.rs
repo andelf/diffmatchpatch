@@ -210,8 +210,7 @@ fn test_diff_chars_to_lines() {
     let mut diffs = vec![Diff::Equal("\x01\x02\x01".into()), Diff::Insert("\x02\x01\x02".into())];
 
     dmp.diff_chars_to_lines(&mut diffs, &vec!["".into(), "alpha\n".into(), "beta\n".into()]);
-
-    println!("=> {:?}", diffs);
+    //println!("=> {:?}", diffs);
     assert_eq!(
         diffs,
         vec![
@@ -220,6 +219,130 @@ fn test_diff_chars_to_lines() {
         ]
     );
 
-    // TODO: More than 256 to reveal any 8-bit limitations.
+    let n = 300;
+    let mut line_list = (1..=n).map(|c| c.to_string() + "\n").collect::<Vec<_>>();
+    let lines = line_list.clone().concat();
+    let chars = (1..=n).map(|c| char::from_u32(c as u32).unwrap()).collect::<String>();
+
+    line_list.insert(0, "".into());
+    let mut diffs = vec![Diff::Delete(chars.clone().into())];
+
+    dmp.diff_chars_to_lines(&mut diffs, &line_list);
+    // println!("=> {:?}", diffs);
+    assert_eq!(diffs[0].text(), lines.to_chars());
+
     // TODO: More than 1,114,112 to verify any 17 * 16-bit limitation.
+}
+
+#[test]
+fn test_diff_cleanup_merge() {
+    use Diff::*;
+    // Cleanup a messy diff
+    let dmp = DiffMatchPatch::new();
+
+    // Null case
+    let mut diffs = vec![];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert!(diffs.is_empty());
+
+    // Merge equalities
+    let mut diffs = vec![Diff::Equal("a".into()), Diff::Equal("b".into()), Diff::Equal("c".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Diff::Equal("abc".into())]);
+
+    // Merge deletions
+    let mut diffs =
+        vec![Diff::Delete("a".into()), Diff::Delete("b".into()), Diff::Delete("c".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Diff::Delete("abc".into())]);
+
+    // Merge insertions
+    let mut diffs =
+        vec![Diff::Insert("a".into()), Diff::Insert("b".into()), Diff::Insert("c".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Diff::Insert("abc".into())]);
+
+    // Prefix and suffix detection
+    let mut diffs = vec![Delete("a".into()), Insert("abc".into()), Delete("dc".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("a".into()), Delete("d".into()), Insert("b".into()), Equal("c".into())]
+    );
+
+    // Prefix and suffix detection with equalities
+    let mut diffs = vec![
+        Equal("x".into()),
+        Delete("a".into()),
+        Insert("abc".into()),
+        Delete("dc".into()),
+        Equal("y".into()),
+    ];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("xa".into()), Delete("d".into()), Insert("b".into()), Equal("cy".into()),]
+    );
+
+    // Slide edit left
+    let mut diffs = vec![Equal("a".into()), Insert("ba".into()), Equal("c".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Insert("ab".into()), Equal("ac".into())]);
+
+    // Slide edit right.
+    // diffs = [(self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_INSERT, "ab"), (self.dmp.DIFF_EQUAL, "a")]
+    // self.dmp.diff_cleanupMerge(diffs)
+    // self.assertEqual([(self.dmp.DIFF_EQUAL, "ca"), (self.dmp.DIFF_INSERT, "ba")], diffs)
+
+    let mut diffs = vec![Equal("c".into()), Insert("ab".into()), Equal("a".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Equal("ca".into()), Insert("ba".into())]);
+
+    // Slide edit left recursive.
+    // diffs = [(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_DELETE, "ac"), (self.dmp.DIFF_EQUAL, "x")]
+    // self.dmp.diff_cleanupMerge(diffs)
+    //self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_EQUAL, "acx")], diffs)
+
+    let mut diffs = vec![
+        Equal("a".into()),
+        Delete("b".into()),
+        Equal("c".into()),
+        Delete("ac".into()),
+        Equal("x".into()),
+    ];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abc".into()), Equal("acx".into())]);
+
+    // Slide edit right recursive.
+    //diffs = [(self.dmp.DIFF_EQUAL, "x"), (self.dmp.DIFF_DELETE, "ca"), (self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_EQUAL, "a")]
+    //self.dmp.diff_cleanupMerge(diffs)
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "xca"), (self.dmp.DIFF_DELETE, "cba")], diffs)
+
+    let mut diffs = vec![
+        Equal("x".into()),
+        Delete("ca".into()),
+        Equal("c".into()),
+        Delete("b".into()),
+        Equal("a".into()),
+    ];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Equal("xca".into()), Delete("cba".into())]);
+
+    // Empty merge.
+    //diffs = [(self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_INSERT, "ab"), (self.dmp.DIFF_EQUAL, "c")]
+    //self.dmp.diff_cleanupMerge(diffs)
+    //self.assertEqual([(self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "bc")], diffs)
+
+    let mut diffs = vec![Delete("b".into()), Insert("ab".into()), Equal("c".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Insert("a".into()), Equal("bc".into())]);
+
+    // Empty equality.
+    // diffs = [(self.dmp.DIFF_EQUAL, ""), (self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "b")]
+    //self.dmp.diff_cleanupMerge(diffs)
+    //self.assertEqual([(self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "b")], diffs)
+
+    let mut diffs = vec![Equal("".into()), Insert("a".into()), Equal("b".into())];
+    dmp.diff_cleanup_merge(&mut diffs);
+    assert_eq!(diffs, vec![Insert("a".into()), Equal("b".into())]);
 }
