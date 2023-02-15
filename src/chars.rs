@@ -91,6 +91,12 @@ impl From<Vec<char>> for Chars {
     }
 }
 
+impl From<&Chars> for Chars {
+    fn from(s: &Chars) -> Self {
+        s.clone()
+    }
+}
+
 impl From<Chars> for String {
     fn from(s: Chars) -> Self {
         s.0.iter().collect()

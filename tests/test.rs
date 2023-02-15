@@ -426,3 +426,193 @@ fn test_diff_cleanup_semantic_lossless() {
         vec![Equal("The xxx.".into()), Insert(" The zzz.".into()), Equal(" The yyy.".into()),]
     );
 }
+
+#[test]
+fn test_diff_cleanup_semantic() {
+    // Cleanup semantically trivial equalities.
+    use Diff::*;
+
+    let dmp = DiffMatchPatch::new();
+
+    /*
+    # Null case.
+    diffs = []
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([], diffs)
+    */
+
+    let mut diffs = vec![];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![]);
+
+    /*
+
+           # No elimination #1.
+           diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "cd"), (self.dmp.DIFF_EQUAL, "12"), (self.dmp.DIFF_DELETE, "e")]
+           self.dmp.diff_cleanupSemantic(diffs)
+           self.assertEqual([(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "cd"), (self.dmp.DIFF_EQUAL, "12"), (self.dmp.DIFF_DELETE, "e")], diffs)
+    */
+
+    let mut diffs =
+        vec![Delete("ab".into()), Insert("cd".into()), Equal("12".into()), Delete("e".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Delete("ab".into()), Insert("cd".into()), Equal("12".into()), Delete("e".into()),]
+    );
+
+    /*
+           # No elimination #2.
+           diffs = [(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "ABC"), (self.dmp.DIFF_EQUAL, "1234"), (self.dmp.DIFF_DELETE, "wxyz")]
+           self.dmp.diff_cleanupSemantic(diffs)
+           self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "ABC"), (self.dmp.DIFF_EQUAL, "1234"), (self.dmp.DIFF_DELETE, "wxyz")], diffs)
+
+    */
+
+    let mut diffs = vec![
+        Delete("abc".into()),
+        Insert("ABC".into()),
+        Equal("1234".into()),
+        Delete("wxyz".into()),
+    ];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![
+            Delete("abc".into()),
+            Insert("ABC".into()),
+            Equal("1234".into()),
+            Delete("wxyz".into()),
+        ]
+    );
+
+    /*
+    # Simple elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_EQUAL, "b"), (self.dmp.DIFF_DELETE, "c")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "b")], diffs)
+
+
+    */
+
+    let mut diffs = vec![Delete("a".into()), Equal("b".into()), Delete("c".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abc".into()), Insert("b".into())]);
+
+    /*
+    # Backpass elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_EQUAL, "cd"), (self.dmp.DIFF_DELETE, "e"), (self.dmp.DIFF_EQUAL, "f"), (self.dmp.DIFF_INSERT, "g")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abcdef"), (self.dmp.DIFF_INSERT, "cdfg")], diffs)
+    */
+
+    let mut diffs = vec![
+        Delete("ab".into()),
+        Equal("cd".into()),
+        Delete("e".into()),
+        Equal("f".into()),
+        Insert("g".into()),
+    ];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abcdef".into()), Insert("cdfg".into())]);
+
+    /*       # Multiple eliminations.
+    diffs = [(self.dmp.DIFF_INSERT, "1"), (self.dmp.DIFF_EQUAL, "A"), (self.dmp.DIFF_DELETE, "B"), (self.dmp.DIFF_INSERT, "2"), (self.dmp.DIFF_EQUAL, "_"), (self.dmp.DIFF_INSERT, "1"), (self.dmp.DIFF_EQUAL, "A"), (self.dmp.DIFF_DELETE, "B"), (self.dmp.DIFF_INSERT, "2")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "AB_AB"), (self.dmp.DIFF_INSERT, "1A2_1A2")], diffs)
+    */
+
+    let mut diffs = vec![
+        Insert("1".into()),
+        Equal("A".into()),
+        Delete("B".into()),
+        Insert("2".into()),
+        Equal("_".into()),
+        Insert("1".into()),
+        Equal("A".into()),
+        Delete("B".into()),
+        Insert("2".into()),
+    ];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Delete("AB_AB".into()), Insert("1A2_1A2".into())]);
+
+    /*
+
+    # Word boundaries.
+    diffs = [(self.dmp.DIFF_EQUAL, "The c"), (self.dmp.DIFF_DELETE, "ow and the c"), (self.dmp.DIFF_EQUAL, "at.")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_EQUAL, "The "), (self.dmp.DIFF_DELETE, "cow and the "), (self.dmp.DIFF_EQUAL, "cat.")], diffs)
+    */
+
+    let mut diffs = vec![Equal("The c".into()), Delete("ow and the c".into()), Equal("at.".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("The ".into()), Delete("cow and the ".into()), Equal("cat.".into()),]
+    );
+
+    /*
+
+    # No overlap elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "abcxx"), (self.dmp.DIFF_INSERT, "xxdef")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abcxx"), (self.dmp.DIFF_INSERT, "xxdef")], diffs)
+    */
+
+    let mut diffs = vec![Delete("abcxx".into()), Insert("xxdef".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abcxx".into()), Insert("xxdef".into())]);
+
+    /*
+
+    # Overlap elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "abcxxx"), (self.dmp.DIFF_INSERT, "xxxdef")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_EQUAL, "xxx"), (self.dmp.DIFF_INSERT, "def")], diffs)
+    */
+
+    let mut diffs = vec![Delete("abcxxx".into()), Insert("xxxdef".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abc".into()), Equal("xxx".into()), Insert("def".into())]);
+
+    /*
+    # Reverse overlap elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "xxxabc"), (self.dmp.DIFF_INSERT, "defxxx")]
+    self.dmp.diff_cleanupSemantic(diffs)
+    self.assertEqual([(self.dmp.DIFF_INSERT, "def"), (self.dmp.DIFF_EQUAL, "xxx"), (self.dmp.DIFF_DELETE, "abc")], diffs)
+    */
+
+    let mut diffs = vec![Delete("xxxabc".into()), Insert("defxxx".into())];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(diffs, vec![Insert("def".into()), Equal("xxx".into()), Delete("abc".into())]);
+
+    /*
+
+       # Two overlap eliminations.
+       diffs = [(self.dmp.DIFF_DELETE, "abcd1212"), (self.dmp.DIFF_INSERT, "1212efghi"), (self.dmp.DIFF_EQUAL, "----"), (self.dmp.DIFF_DELETE, "A3"), (self.dmp.DIFF_INSERT, "3BC")]
+       self.dmp.diff_cleanupSemantic(diffs)
+       self.assertEqual([(self.dmp.DIFF_DELETE, "abcd"), (self.dmp.DIFF_EQUAL, "1212"), (self.dmp.DIFF_INSERT, "efghi"), (self.dmp.DIFF_EQUAL, "----"), (self.dmp.DIFF_DELETE, "A"), (self.dmp.DIFF_EQUAL, "3"), (self.dmp.DIFF_INSERT, "BC")], diffs)
+
+    */
+
+    let mut diffs = vec![
+        Delete("abcd1212".into()),
+        Insert("1212efghi".into()),
+        Equal("----".into()),
+        Delete("A3".into()),
+        Insert("3BC".into()),
+    ];
+    dmp.diff_cleanup_semantic(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![
+            Delete("abcd".into()),
+            Equal("1212".into()),
+            Insert("efghi".into()),
+            Equal("----".into()),
+            Delete("A".into()),
+            Equal("3".into()),
+            Insert("BC".into()),
+        ]
+    );
+}
