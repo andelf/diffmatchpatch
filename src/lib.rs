@@ -957,48 +957,42 @@ impl DiffMatchPatch {
         // Number of chars that changed after the equality.
         let mut length_insertions2 = 0;
         let mut length_deletions2 = 0;
-        while (i as usize) < diffs.len() {
-            if diffs[i as usize].is_equal() {
+        while i < diffs.len() {
+            if diffs[i].is_equal() {
                 // Equality found.
                 equalities.push(i);
                 length_insertions1 = length_insertions2;
                 length_insertions2 = 0;
                 length_deletions1 = length_deletions2;
                 length_deletions2 = 0;
-                last_equality = diffs[i as usize].text().clone();
+                last_equality = diffs[i].text().clone();
             } else {
                 // An insertion or deletion.
-                if diffs[i as usize].is_insert() {
-                    length_insertions2 += diffs[i as usize].text().len();
+                if diffs[i].is_insert() {
+                    length_insertions2 += diffs[i].text().len();
                 } else {
-                    length_deletions2 += diffs[i as usize].text().len();
-                    // Eliminate an equality that is smaller or equal to the
-                    // edits on both sides of it.
+                    length_deletions2 += diffs[i].text().len();
                 }
+                // Eliminate an equality that is smaller or equal to the
+                // edits on both sides of it.
                 if !last_equality.is_empty()
                     && last_equality.len() <= usize::max(length_insertions1, length_deletions1)
                     && last_equality.len() <= usize::max(length_insertions2, length_deletions2)
                 {
                     // Duplicate record.
                     diffs.insert(
-                        equalities[equalities.len() - 1] as usize,
+                        equalities[equalities.len() - 1],
                         Diff::Delete(last_equality.clone()),
                     );
                     // Change second copy to insert.
-                    diffs[equalities[equalities.len() - 1] as usize + 1] = Diff::Insert(
-                        diffs[equalities[equalities.len() - 1] as usize + 1].text().into(),
+                    diffs[equalities[equalities.len() - 1] + 1] = Diff::Insert(
+                        diffs[equalities[equalities.len() - 1] + 1].text().into(),
                     );
                     // Throw away the equality we just deleted.
                     equalities.pop();
                     // Throw away the previous equality (it needs to be reevaluated).
                     if !equalities.is_empty() {
                         equalities.pop();
-                    }
-                    if !equalities.is_empty() {
-                        i = equalities[equalities.len() - 1];
-                    } else {
-                        i = 0;
-                        continue; // i = -1;
                     }
                     // Reset the counters.
                     length_insertions1 = 0;
@@ -1007,6 +1001,13 @@ impl DiffMatchPatch {
                     length_deletions2 = 0;
                     last_equality = Chars::new();
                     changes = true;
+
+                    if !equalities.is_empty() {
+                        i = equalities[equalities.len() - 1];
+                    } else {
+                        i = 0;
+                        continue;
+                    }
                 }
             }
             i += 1;
@@ -1017,8 +1018,6 @@ impl DiffMatchPatch {
         }
         self.diff_cleanup_semantic_lossless(diffs);
 
-        let mut overlap_length1: i32;
-        let mut overlap_length2: i32;
         // Find any overlaps between deletions and insertions.
         // e.g: <del>abcxxx</del><ins>xxxdef</ins>
         //   -> <del>abc</del>xxx<ins>def</ins>
@@ -1026,10 +1025,10 @@ impl DiffMatchPatch {
         //   -> <ins>def</ins>xxx<del>abc</del>
         // Only extract an overlap if it is as big as the edit ahead or behind it.
         i = 1;
-        while (i as usize) < diffs.len() {
-            if diffs[i as usize - 1].is_delete() && diffs[i as usize].is_insert() {
-                let deletion = diffs[i as usize - 1].text().clone();
-                let insertion = diffs[i as usize].text().clone();
+        while i < diffs.len() {
+            if diffs[i - 1].is_delete() && diffs[i].is_insert() {
+                let deletion = diffs[i - 1].text().clone();
+                let insertion = diffs[i].text().clone();
                 let overlap_length1 = self.diff_common_overlap(&deletion, &insertion);
                 let overlap_length2 = self.diff_common_overlap(&insertion, &deletion);
                 if overlap_length1 >= overlap_length2 {
@@ -1038,12 +1037,12 @@ impl DiffMatchPatch {
                     {
                         // Overlap found.  Insert an equality and trim the surrounding edits.
                         diffs.insert(
-                            i as usize,
-                            Diff::Equal(insertion[..overlap_length1 as usize].into()),
+                            i,
+                            Diff::Equal(insertion[..overlap_length1].into()),
                         );
-                        diffs[i as usize - 1] =
+                        diffs[i - 1] =
                             Diff::Delete(deletion[..deletion.len() - overlap_length1].into());
-                        diffs[i as usize + 1] = Diff::Insert(insertion[overlap_length1..].into());
+                        diffs[i + 1] = Diff::Insert(insertion[overlap_length1..].into());
                         i += 1;
                     }
                 } else if (overlap_length2 as f32) >= (deletion.len() as f32 / 2.0)
@@ -1051,16 +1050,117 @@ impl DiffMatchPatch {
                 {
                     // Reverse overlap found.
                     // Insert an equality and swap and trim the surrounding edits.
-                    diffs.insert(i as usize, Diff::Equal(deletion[..overlap_length2].into()));
+                    diffs.insert(i, Diff::Equal(deletion[..overlap_length2].into()));
                     // let insertion_vec_len = insertion_vec.len();
-                    diffs[i as usize - 1] =
+                    diffs[i - 1] =
                         Diff::Insert(insertion[..insertion.len() - overlap_length2].into());
-                    diffs[i as usize + 1] = Diff::Delete(deletion[overlap_length2..].into());
+                    diffs[i + 1] = Diff::Delete(deletion[overlap_length2..].into());
                     i += 1;
                 }
                 i += 1;
             }
             i += 1;
+        }
+    }
+
+    /**
+      Reduce the number of edits by eliminating operationally trivial
+      equalities.
+
+      Args:
+          diffs: Vector of diff object.
+    */
+    pub fn diff_cleanup_efficiency(&mut self, diffs: &mut Vec<Diff>) {
+        if diffs.is_empty() {
+            return;
+        }
+        let mut changes: bool = false;
+        let mut equalities: Vec<i32> = vec![]; // Stack of indices where equalities are found.
+        let mut last_equality = Chars::new(); // Always equal to diffs[equalities[-1]][1]
+        let mut i: i32 = 0; // Index of current position.
+        let mut pre_ins = false; // Is there an insertion operation before the last equality.
+        let mut pre_del = false; // Is there a deletion operation before the last equality.
+        let mut post_ins = false; // Is there an insertion operation after the last equality.
+        let mut post_del = false; // Is there a deletion operation after the last equality.
+        while (i as usize) < diffs.len() {
+            if diffs[i as usize].is_equal() {
+                if diffs[i as usize].text().len() < self.edit_cost as usize
+                    && (post_del || post_ins)
+                {
+                    // Candidate found.
+                    equalities.push(i);
+                    pre_ins = post_ins;
+                    pre_del = post_del;
+                    last_equality = diffs[i as usize].text().clone();
+                } else {
+                    // Not a candidate, and can never become one.
+                    equalities = vec![];
+                    // last_equality.clear();
+                }
+                post_ins = false;
+                post_del = false;
+            } else {
+                // An insertion or deletion.
+                if diffs[i as usize].is_delete() {
+                    post_del = true;
+                } else {
+                    post_ins = true;
+                }
+
+                /*
+                Five types to be split:
+                <ins>A</ins><del>B</del>XY<ins>C</ins><del>D</del>
+                <ins>A</ins>X<ins>C</ins><del>D</del>
+                <ins>A</ins><del>B</del>X<ins>C</ins>
+                <ins>A</del>X<ins>C</ins><del>D</del>
+                <ins>A</ins><del>B</del>X<del>C</del>
+                */
+
+                if !last_equality.is_empty()
+                    && ((pre_ins && pre_del && post_del && post_ins)
+                        || ((last_equality.len() as i32) < self.edit_cost / 2
+                            && (pre_ins as i32
+                                + pre_del as i32
+                                + post_del as i32
+                                + post_ins as i32)
+                                == 3))
+                {
+                    // Duplicate record.
+                    diffs.insert(
+                        equalities[equalities.len() - 1] as usize,
+                        Diff::Delete(last_equality.clone()),
+                    );
+                    // Change second copy to insert.
+                    diffs[equalities[equalities.len() - 1] as usize + 1] = Diff::Insert(
+                        diffs[equalities[equalities.len() - 1] as usize + 1].text().clone(),
+                    );
+                    equalities.pop(); // Throw away the equality we just deleted.
+
+                    last_equality.clear();
+                    if pre_ins && pre_del {
+                        // No changes made which could affect previous entry, keep going.
+                        post_del = true;
+                        post_ins = true;
+                        equalities = vec![];
+                    } else {
+                        if !equalities.is_empty() {
+                            equalities.pop(); // Throw away the previous equality.
+                        }
+                        if !equalities.is_empty() {
+                            i = equalities[equalities.len() - 1];
+                        } else {
+                            i = -1;
+                        }
+                        post_ins = false;
+                        post_del = false;
+                    }
+                    changes = true;
+                }
+            }
+            i += 1;
+        }
+        if changes {
+            self.diff_cleanup_merge(diffs);
         }
     }
 }

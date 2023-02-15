@@ -3,6 +3,8 @@ use std::time::Duration;
 #[cfg(test)]
 use diffmatchpatch::*;
 
+use Diff::*;
+
 pub trait ToCharsVec {
     fn to_chars_vec(&self) -> Vec<Vec<char>>;
 }
@@ -491,8 +493,6 @@ fn test_diff_cleanup_semantic() {
     diffs = [(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_EQUAL, "b"), (self.dmp.DIFF_DELETE, "c")]
     self.dmp.diff_cleanupSemantic(diffs)
     self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "b")], diffs)
-
-
     */
 
     let mut diffs = vec![Delete("a".into()), Equal("b".into()), Delete("c".into())];
@@ -615,4 +615,116 @@ fn test_diff_cleanup_semantic() {
             Insert("BC".into()),
         ]
     );
+}
+
+#[test]
+fn test_diff_cleanup_efficiency() {
+    // Cleanup operationally trivial equalities.
+    let mut dmp = DiffMatchPatch::new();
+    dmp.edit_cost = 4;
+
+    /*
+    # Null case.
+    diffs = []
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([], diffs)
+    */
+
+    let mut diffs = vec![];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(diffs, vec![]);
+
+    /*
+    # No elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "wxyz"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "34")]
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "wxyz"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "34")], diffs)
+    */
+
+    let mut diffs = vec![
+        Delete("ab".into()),
+        Insert("12".into()),
+        Equal("wxyz".into()),
+        Delete("cd".into()),
+        Insert("34".into()),
+    ];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![
+            Delete("ab".into()),
+            Insert("12".into()),
+            Equal("wxyz".into()),
+            Delete("cd".into()),
+            Insert("34".into()),
+        ]
+    );
+
+    /*
+    # Four-edit elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "xyz"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "34")]
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abxyzcd"), (self.dmp.DIFF_INSERT, "12xyz34")], diffs)
+    */
+
+    let mut diffs = vec![
+        Delete("ab".into()),
+        Insert("12".into()),
+        Equal("xyz".into()),
+        Delete("cd".into()),
+        Insert("34".into()),
+    ];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abxyzcd".into()), Insert("12xyz34".into())]);
+
+    /*
+    # Three-edit elimination.
+    diffs = [(self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "x"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "34")]
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "xcd"), (self.dmp.DIFF_INSERT, "12x34")], diffs)
+    */
+
+    let mut diffs =
+        vec![Insert("12".into()), Equal("x".into()), Delete("cd".into()), Insert("34".into())];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(diffs, vec![Delete("xcd".into()), Insert("12x34".into())]);
+
+    /*
+    # Backpass elimination.
+    diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "xy"), (self.dmp.DIFF_INSERT, "34"), (self.dmp.DIFF_EQUAL, "z"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "56")]
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abxyzcd"), (self.dmp.DIFF_INSERT, "12xy34z56")], diffs)
+    */
+
+    let mut diffs = vec![
+        Delete("ab".into()),
+        Insert("12".into()),
+        Equal("xy".into()),
+        Insert("34".into()),
+        Equal("z".into()),
+        Delete("cd".into()),
+        Insert("56".into()),
+    ];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abxyzcd".into()), Insert("12xy34z56".into())]);
+
+    /*
+    # High cost elimination.
+    self.dmp.Diff_EditCost = 5
+    diffs = [(self.dmp.DIFF_DELETE, "ab"), (self.dmp.DIFF_INSERT, "12"), (self.dmp.DIFF_EQUAL, "wxyz"), (self.dmp.DIFF_DELETE, "cd"), (self.dmp.DIFF_INSERT, "34")]
+    self.dmp.diff_cleanupEfficiency(diffs)
+    self.assertEqual([(self.dmp.DIFF_DELETE, "abwxyzcd"), (self.dmp.DIFF_INSERT, "12wxyz34")], diffs)
+    self.dmp.Diff_EditCost = 4
+     */
+
+    dmp.edit_cost = 5;
+    let mut diffs = vec![
+        Delete("ab".into()),
+        Insert("12".into()),
+        Equal("wxyz".into()),
+        Delete("cd".into()),
+        Insert("34".into()),
+    ];
+    dmp.diff_cleanup_efficiency(&mut diffs);
+    assert_eq!(diffs, vec![Delete("abwxyzcd".into()), Insert("12wxyz34".into())]);
 }
