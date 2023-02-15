@@ -175,3 +175,17 @@ impl ops::AddAssign for Chars {
     }
 }
 */
+
+/*
+impl std::slice::Concat<&Chars> for Chars {
+    type Output = Chars;
+
+    fn concat(&self) -> Self::Output {
+        let mut result = Chars::new();
+        for s in self {
+            result += s;
+        }
+        result
+    }
+}
+*/

@@ -728,3 +728,21 @@ fn test_diff_cleanup_efficiency() {
     dmp.diff_cleanup_efficiency(&mut diffs);
     assert_eq!(diffs, vec![Delete("abwxyzcd".into()), Insert("12wxyz34".into())]);
 }
+
+#[test]
+fn test_diff_text() {
+    // Compute the source and destination texts.
+    let dmp = DiffMatchPatch::new();
+
+    let diffs = vec![
+        Equal("jump".into()),
+        Delete("s".into()),
+        Insert("ed".into()),
+        Equal(" over ".into()),
+        Delete("the".into()),
+        Insert("a".into()),
+        Equal(" lazy".into()),
+    ];
+    assert_eq!(Chars::from("jumps over the lazy"), dmp.diff_text1(&diffs));
+    assert_eq!(Chars::from("jumped over a lazy"), dmp.diff_text2(&diffs));
+}

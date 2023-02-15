@@ -1162,4 +1162,43 @@ impl DiffMatchPatch {
             self.diff_cleanup_merge(diffs);
         }
     }
+
+    /**
+    Compute and return the source text (all equalities and deletions).
+
+    Args:
+        diffs: Array of diff tuples.
+    Returns:
+        Source text.
+    */
+    pub fn diff_text1(&self, diffs: &[Diff]) -> Chars {
+        let mut text = Chars::new();
+        for d in diffs {
+            if !d.is_insert() {
+                text += d.text();
+            }
+        }
+        text
+    }
+
+    /**
+    Compute and return the destination text (all equalities and insertions).
+
+    Args:
+        diffs: Array of diff tuples.
+    Returns:
+        Destination text.
+     */
+    pub fn diff_text2(&self, diffs: &[Diff]) -> Chars {
+        let mut text = Chars::new();
+        for d in diffs {
+            if !d.is_delete() {
+                text += d.text();
+            }
+        }
+        text
+    }
+
+    // unimplemented:
+    // DiffPrettyHtml
 }
