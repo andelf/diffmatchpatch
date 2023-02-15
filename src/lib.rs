@@ -3,9 +3,11 @@ use core::char;
 use std::{collections::HashMap, iter::FromIterator, result::Result, time::Duration};
 
 pub use chars::Chars;
+pub use patch::PatchObj;
 
 pub mod chars;
 mod r#match;
+mod patch;
 
 pub trait ToChars {
     fn to_chars(&self) -> Vec<char>;
@@ -117,39 +119,6 @@ impl Diff {
     /// If the text if empty, then it's a no-op
     pub fn is_nop(&self) -> bool {
         self.text().is_empty()
-    }
-}
-
-#[derive(Debug)]
-pub struct Patch {
-    pub diffs: Vec<Diff>,
-    pub start1: i32,
-    pub start2: i32,
-    pub length1: i32,
-    pub length2: i32,
-}
-
-impl Patch {
-    // A new diff patch object created.
-    pub fn new(diffs: Vec<Diff>, start1: i32, start2: i32, length1: i32, length2: i32) -> Patch {
-        Patch {
-            diffs,
-            start1,
-            start2,
-            length1,
-            length2,
-        }
-    }
-}
-
-impl PartialEq for Patch {
-    // it will return if two patch objects are equal or not.
-    fn eq(&self, other: &Self) -> bool {
-        (self.diffs == other.diffs)
-            & (self.start1 == other.start1)
-            & (self.start2 == other.start2)
-            & (self.length1 == other.length1)
-            & (self.length2 == other.length2)
     }
 }
 

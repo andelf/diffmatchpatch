@@ -1,3 +1,4 @@
+//! MATCH TEST FUNCTIONS
 use std::collections::HashMap;
 
 #[cfg(test)]
