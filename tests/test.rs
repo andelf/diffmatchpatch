@@ -357,4 +357,72 @@ fn test_diff_cleanup_semantic_lossless() {
             Equal("BBB\r\nEEE".into()),
         ]
     );
+
+    // Line boundaries.
+    //diffs = [(self.dmp.DIFF_EQUAL, "AAA\r\nBBB"), (self.dmp.DIFF_INSERT, " DDD\r\nBBB"), (self.dmp.DIFF_EQUAL, " EEE")]
+    //self.dmp.diff_cleanupSemanticLossless(diffs)
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "AAA\r\n"), (self.dmp.DIFF_INSERT, "BBB DDD\r\n"), (self.dmp.DIFF_EQUAL, "BBB EEE")], diffs)
+
+    let mut diffs =
+        vec![Equal("AAA\r\nBBB".into()), Insert(" DDD\r\nBBB".into()), Equal(" EEE".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("AAA\r\n".into()), Insert("BBB DDD\r\n".into()), Equal("BBB EEE".into()),]
+    );
+
+    // Word boundaries.
+    //     diffs = [(self.dmp.DIFF_EQUAL, "The c"), (self.dmp.DIFF_INSERT, "ow and the c"), (self.dmp.DIFF_EQUAL, "at.")]
+    //     self.dmp.diff_cleanupSemanticLossless(diffs)
+    //     self.assertEqual([(self.dmp.DIFF_EQUAL, "The "), (self.dmp.DIFF_INSERT, "cow and the "), (self.dmp.DIFF_EQUAL, "cat.")], diffs)
+
+    let mut diffs = vec![Equal("The c".into()), Insert("ow and the c".into()), Equal("at.".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("The ".into()), Insert("cow and the ".into()), Equal("cat.".into()),]
+    );
+
+    // Alphanumeric boundaries.
+    //     diffs = [(self.dmp.DIFF_EQUAL, "The-c"), (self.dmp.DIFF_INSERT, "ow-and-the-c"), (self.dmp.DIFF_EQUAL, "at.")]
+    //     self.dmp.diff_cleanupSemanticLossless(diffs)
+    //     self.assertEqual([(self.dmp.DIFF_EQUAL, "The-"), (self.dmp.DIFF_INSERT, "cow-and-the-"), (self.dmp.DIFF_EQUAL, "cat.")], diffs)
+
+    let mut diffs = vec![Equal("The-c".into()), Insert("ow-and-the-c".into()), Equal("at.".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("The-".into()), Insert("cow-and-the-".into()), Equal("cat.".into()),]
+    );
+
+    // Hitting the start.
+    //     diffs = [(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_EQUAL, "ax")]
+    //     self.dmp.diff_cleanupSemanticLossless(diffs)
+    //     self.assertEqual([(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_EQUAL, "aax")], diffs)
+
+    let mut diffs = vec![Equal("a".into()), Delete("a".into()), Equal("ax".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(diffs, vec![Delete("a".into()), Equal("aax".into())]);
+
+    // Hitting the end.
+    //     diffs = [(self.dmp.DIFF_EQUAL, "xa"), (self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_EQUAL, "a")]
+    //     self.dmp.diff_cleanupSemanticLossless(diffs)
+    //     self.assertEqual([(self.dmp.DIFF_EQUAL, "xaa"), (self.dmp.DIFF_DELETE, "a")], diffs)
+
+    let mut diffs = vec![Equal("xa".into()), Delete("a".into()), Equal("a".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(diffs, vec![Equal("xaa".into()), Delete("a".into())]);
+
+    // Sentence boundaries.
+    //     diffs = [(self.dmp.DIFF_EQUAL, "The xxx. The "), (self.dmp.DIFF_INSERT, "zzz. The "), (self.dmp.DIFF_EQUAL, "yyy.")]
+    //     self.dmp.diff_cleanupSemanticLossless(diffs)
+    //     self.assertEqual([(self.dmp.DIFF_EQUAL, "The xxx."), (self.dmp.DIFF_INSERT, " The zzz."), (self.dmp.DIFF_EQUAL, " The yyy.")], diffs)
+
+    let mut diffs =
+        vec![Equal("The xxx. The ".into()), Insert("zzz. The ".into()), Equal("yyy.".into())];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![Equal("The xxx.".into()), Insert(" The zzz.".into()), Equal(" The yyy.".into()),]
+    );
 }
