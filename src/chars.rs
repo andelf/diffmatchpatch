@@ -28,7 +28,7 @@ impl Chars {
     /// Slice with negative index support
     pub(crate) fn slice_to(&self, i: isize) -> &[char] {
         if i < 0 {
-            &self[..self.len() - (i.abs() as usize)]
+            &self[..self.len() - i.unsigned_abs()]
         } else {
             &self[..i as usize]
         }
@@ -123,13 +123,13 @@ impl DerefMut for Chars {
 
 impl Borrow<[char]> for Chars {
     fn borrow(&self) -> &[char] {
-        &*self
+        self
     }
 }
 
 impl AsRef<[char]> for Chars {
     fn as_ref(&self) -> &[char] {
-        &*self
+        self
     }
 }
 

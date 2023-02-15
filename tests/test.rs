@@ -225,7 +225,7 @@ fn test_diff_chars_to_lines() {
     let chars = (1..=n).map(|c| char::from_u32(c as u32).unwrap()).collect::<String>();
 
     line_list.insert(0, "".into());
-    let mut diffs = vec![Diff::Delete(chars.clone().into())];
+    let mut diffs = vec![Diff::Delete(chars.into())];
 
     dmp.diff_chars_to_lines(&mut diffs, &line_list);
     // println!("=> {:?}", diffs);

@@ -1,12 +1,6 @@
-use core::{char, fmt};
-use regex::{internal::Char, Regex};
-use std::{
-    collections::HashMap,
-    iter::FromIterator,
-    result::Result,
-    time::{Duration, Instant},
-};
-use urlencoding::{decode, encode};
+use core::char;
+
+use std::{collections::HashMap, iter::FromIterator, result::Result, time::Duration};
 
 pub use chars::Chars;
 
@@ -364,7 +358,7 @@ impl DiffMatchPatch {
         let pointermax = usize::min(text1.len(), text2.len());
         let mut pointerstart = 0;
         while pointerstart < pointermax {
-            if text1[pointerstart as usize] == text2[pointerstart as usize] {
+            if text1[pointerstart] == text2[pointerstart] {
                 pointerstart += 1;
             } else {
                 return pointerstart;
@@ -432,9 +426,9 @@ impl DiffMatchPatch {
         // Truncate the longer chars.
         if text1.len() > text2.len() {
             text1_trunc = &text1[(text1.len() - text2.len())..];
-            text2_trunc = &text2[..];
+            text2_trunc = text2;
         } else {
-            text1_trunc = &text1[..];
+            text1_trunc = text1;
             text2_trunc = &text2[0..text1.len()];
         }
         let mut best = 0;
@@ -447,7 +441,7 @@ impl DiffMatchPatch {
         // and increase length until no match is found.
         // Performance analysis: https://neil.fraser.name/news/2010/11/04/
         loop {
-            let patern = &text1_trunc[(len as usize - length)..(len as usize)];
+            let patern = &text1_trunc[(len - length)..len];
             if let Some(found) = self.kmp(text2_trunc, patern, 0) {
                 length += found;
                 if found == 0 {
@@ -479,13 +473,10 @@ impl DiffMatchPatch {
         text1: &'a [char],
         text2: &'a [char],
     ) -> Option<Vec<&'a [char]>> {
-        if self.diff_timeout.is_none() {
-            // Don't risk returning a non-optimal diff if we have unlimited time.
-            return None;
-        }
+        self.diff_timeout?;
 
-        let text1 = text1.as_ref();
-        let text2 = text2.as_ref();
+        let text1 = text1;
+        let text2 = text2;
 
         let (long_text, short_text) = if text1.len() > text2.len() {
             (text1, text2)
@@ -552,8 +543,7 @@ impl DiffMatchPatch {
         i: usize,
     ) -> Vec<&'a [char]> {
         let long_len = long_text.len();
-        let seed =
-            Vec::from_iter(long_text[(i as usize)..(i as usize + long_len / 4)].iter().cloned());
+        let seed = Vec::from_iter(long_text[i..(i + long_len / 4)].iter().cloned());
         let mut best_common: &[char] = &[];
         let mut best_longtext_a: &[char] = &[];
         let mut best_longtext_b: &[char] = &[];
@@ -561,15 +551,13 @@ impl DiffMatchPatch {
         let mut best_shorttext_b: &[char] = &[];
         let mut j = self.kmp(short_text, &seed, 0);
         while j.is_some() {
-            let prefix_length =
-                self.diff_common_prefix(&long_text[(i as usize)..], &short_text[j.unwrap()..]);
-            let suffix_length =
-                self.diff_common_suffix(&long_text[..(i as usize)], &short_text[..j.unwrap()]);
-            if best_common.len() < suffix_length as usize + prefix_length as usize {
-                best_common = &short_text
-                    [(j.unwrap() - suffix_length as usize)..(j.unwrap() + prefix_length as usize)];
-                best_longtext_a = &long_text[..(i as usize - suffix_length)];
-                best_longtext_b = &long_text[(i as usize + prefix_length)..];
+            let prefix_length = self.diff_common_prefix(&long_text[i..], &short_text[j.unwrap()..]);
+            let suffix_length = self.diff_common_suffix(&long_text[..i], &short_text[..j.unwrap()]);
+            if best_common.len() < suffix_length + prefix_length {
+                best_common =
+                    &short_text[(j.unwrap() - suffix_length)..(j.unwrap() + prefix_length)];
+                best_longtext_a = &long_text[..(i - suffix_length)];
+                best_longtext_b = &long_text[(i + prefix_length)..];
                 best_shorttext_a = &short_text[..(j.unwrap() - suffix_length)];
                 best_shorttext_b = &short_text[(j.unwrap() + prefix_length)..];
             }
@@ -673,18 +661,16 @@ impl DiffMatchPatch {
         diffs.push(Diff::Equal("".into()));
         let mut text_insert = Chars::new();
         let mut text_delete = Chars::new();
-        let mut i: isize = 0;
+        let mut i: usize = 0;
         let mut count_insert = 0;
         let mut count_delete = 0;
-        while (i as usize) < diffs.len() {
-            println!("=> {}", i);
-            println!("=> {:?}", diffs);
-            if diffs[i as usize].is_delete() {
-                text_delete += &diffs[i as usize].text();
+        while i < diffs.len() {
+            if diffs[i].is_delete() {
+                text_delete += diffs[i].text();
                 count_delete += 1;
                 i += 1;
-            } else if diffs[i as usize].is_insert() {
-                text_insert += &diffs[i as usize].text();
+            } else if diffs[i].is_insert() {
+                text_insert += diffs[i].text();
                 count_insert += 1;
                 i += 1;
             } else {
@@ -696,9 +682,11 @@ impl DiffMatchPatch {
                         let mut commonlength = self.diff_common_prefix(&text_insert, &text_delete);
                         if commonlength != 0 {
                             let temp1 = &text_insert[..commonlength];
-                            let x = i - count_delete - count_insert - 1;
-                            if x >= 0 && diffs[x as usize].is_equal() {
-                                *diffs[x as usize].text_mut() += temp1;
+                            //  i - count_delete - count_insert - 1
+                            let x = i.checked_sub(count_delete + count_insert + 1);
+
+                            if x.is_some() && diffs[x.unwrap()].is_equal() {
+                                *diffs[x.unwrap()].text_mut() += temp1;
                             } else {
                                 diffs.insert(0, Diff::Equal(temp1.into()));
                                 i += 1;
@@ -712,8 +700,8 @@ impl DiffMatchPatch {
                         if commonlength != 0 {
                             let temp2 =
                                 Chars::from(&text_insert[text_insert.len() - commonlength..])
-                                    + diffs[i as usize].text();
-                            *diffs[i as usize].text_mut() = temp2;
+                                    + diffs[i].text();
+                            *diffs[i].text_mut() = temp2;
                             text_insert = text_insert[..text_insert.len() - commonlength].into();
                             text_delete = text_delete[..text_delete.len() - commonlength].into();
                         }
@@ -721,24 +709,24 @@ impl DiffMatchPatch {
 
                     // Delete the offending records and add the merged ones.
                     i -= count_delete + count_insert;
-                    for _j in 0..(count_delete + count_insert) as usize {
-                        diffs.remove(i as usize);
+                    for _j in 0..(count_delete + count_insert) {
+                        diffs.remove(i);
                     }
                     if !text_delete.is_empty() {
-                        diffs.insert(i as usize, Diff::Delete(text_delete.clone()));
+                        diffs.insert(i, Diff::Delete(text_delete.clone()));
                         i += 1;
                     }
                     if !text_insert.is_empty() {
-                        diffs.insert(i as usize, Diff::Insert(text_insert.clone()));
+                        diffs.insert(i, Diff::Insert(text_insert.clone()));
                         i += 1;
                     }
                     i += 1;
-                } else if i != 0 && diffs[i as usize - 1].is_equal() {
+                } else if i != 0 && diffs[i - 1].is_equal() {
                     // Merge this equality with the previous one.
                     // temp variable to avoid borrow checker
-                    let temp1 = diffs[i as usize - 1].text_mut().take() + diffs[i as usize].text();
-                    *diffs[i as usize - 1].text_mut() = temp1;
-                    diffs.remove(i as usize);
+                    let temp1 = diffs[i - 1].text_mut().take() + diffs[i].text();
+                    *diffs[i - 1].text_mut() = temp1;
+                    diffs.remove(i);
                 } else {
                     i += 1;
                 }
@@ -759,39 +747,38 @@ impl DiffMatchPatch {
         let mut changes = false;
         i = 1;
         // Intentionally ignore the first and last element (don't need checking).
-        while (i as usize) < diffs.len() - 1 {
-            if diffs[i as usize - 1].is_equal() && diffs[i as usize + 1].is_equal() {
+        while i < diffs.len() - 1 {
+            if diffs[i - 1].is_equal() && diffs[i + 1].is_equal() {
                 // This is a single edit surrounded by equalities.
-                if diffs[i as usize].text().ends_with(diffs[i as usize - 1].text()) {
+                if diffs[i].text().ends_with(diffs[i - 1].text()) {
                     // Shift the edit over the previous equality.
                     //  A<ins>BA</ins>C -> <ins>AB</ins>AC
-                    if !diffs[i as usize - 1].text().is_empty() {
-                        let prev = diffs[i as usize - 1].text();
-                        let next = diffs[i as usize + 1].text();
+                    if !diffs[i - 1].text().is_empty() {
+                        let prev = diffs[i - 1].text();
+                        let next = diffs[i + 1].text();
 
                         // temp variables to eliminate borrow checker errors
-                        let temp1 = prev.to_owned()
-                            + diffs[i as usize].text().slice_to(-(prev.len() as isize));
+                        let temp1 =
+                            prev.to_owned() + diffs[i].text().slice_to(-(prev.len() as isize));
                         let temp2 = prev.to_owned() + next;
-                        *diffs[i as usize].text_mut() = temp1;
-                        *diffs[i as usize + 1].text_mut() = temp2;
+                        *diffs[i].text_mut() = temp1;
+                        *diffs[i + 1].text_mut() = temp2;
                     }
 
-                    diffs.remove(i as usize - 1); // remove prev
+                    diffs.remove(i - 1); // remove prev
                     changes = true;
-                } else if diffs[i as usize].text().starts_with(diffs[i as usize + 1].text()) {
+                } else if diffs[i].text().starts_with(diffs[i + 1].text()) {
                     // Shift the edit over the next equality.
                     //  A<ins>CB</ins>C -> AC<ins>BC</ins>
-                    let prev = diffs[i as usize - 1].text();
-                    let next = diffs[i as usize + 1].text();
+                    let prev = diffs[i - 1].text();
+                    let next = diffs[i + 1].text();
 
                     let temp1 = prev.to_owned() + next;
-                    let temp2 =
-                        Chars::from(diffs[i as usize].text()[next.len()..].to_owned()) + next;
-                    *diffs[i as usize - 1].text_mut() = temp1;
-                    *diffs[i as usize].text_mut() = temp2;
+                    let temp2 = Chars::from(diffs[i].text()[next.len()..].to_owned()) + next;
+                    *diffs[i - 1].text_mut() = temp1;
+                    *diffs[i].text_mut() = temp2;
 
-                    diffs.remove(i as usize + 1);
+                    diffs.remove(i + 1);
                     changes = true;
                 }
             }
