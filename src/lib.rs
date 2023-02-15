@@ -8,7 +8,7 @@ use std::{
 };
 
 pub use chars::Chars;
-pub use patch::PatchObj;
+pub use patch::Patch;
 
 pub mod chars;
 mod r#match;
@@ -270,7 +270,7 @@ impl DiffMatchPatch {
         diffs: Vector of diffs as changes.
         lineArray: Vector of unique strings.
     */
-    pub fn diff_chars_to_lines(&self, diffs: &mut Vec<Diff>, line_array: &Vec<Chars>) {
+    pub fn diff_chars_to_lines(&self, diffs: &mut Vec<Diff>, line_array: &[Chars]) {
         for diff in diffs.iter_mut() {
             let mut text = Chars::new();
             let text1 = diff.text();
@@ -454,12 +454,12 @@ impl DiffMatchPatch {
         if text1.len() > text2.len() {
             return Some(hm);
         }
-        let mut temp2 = hm[0].clone();
-        let mut temp3 = hm[2].clone();
+        let mut temp2 = hm[0];
+        let mut temp3 = hm[2];
         hm[0] = temp3;
         hm[2] = temp2;
-        temp2 = hm[1].clone();
-        temp3 = hm[3].clone();
+        temp2 = hm[1];
+        temp3 = hm[3];
         hm[1] = temp3;
         hm[3] = temp2;
         Some(hm)
@@ -1297,18 +1297,16 @@ impl DiffMatchPatch {
                 }
                 y1 = x1 - k1;
                 while x1 < text1_length && y1 < text2_length {
-                    let i1;
-                    let i2;
-                    if x1 < 0 {
-                        i1 = text1_length + x1;
+                    let i1 = if x1 < 0 {
+                        text1_length + x1
                     } else {
-                        i1 = x1;
-                    }
-                    if y1 < 0 {
-                        i2 = text2_length + y1;
+                        x1
+                    };
+                    let i2 = if y1 < 0 {
+                        text2_length + y1
                     } else {
-                        i2 = y1;
-                    }
+                        y1
+                    };
                     if text1[i1 as usize] != text2[i2 as usize] {
                         break;
                     }
@@ -1355,18 +1353,16 @@ impl DiffMatchPatch {
                 }
                 y2 = x2 - k2;
                 while x2 < text1_length && y2 < text2_length {
-                    let i1;
-                    let i2;
-                    if text1_length - x2 > 0 {
-                        i1 = text1_length - x2 - 1;
+                    let i1 = if text1_length - x2 > 0 {
+                        text1_length - x2 - 1
                     } else {
-                        i1 = x2 + 1;
-                    }
-                    if text2_length - y2 > 0 {
-                        i2 = text2_length - y2 - 1;
+                        x2 + 1
+                    };
+                    let i2 = if text2_length - y2 > 0 {
+                        text2_length - y2 - 1
                     } else {
-                        i2 = y2 + 1;
-                    }
+                        y2 + 1
+                    };
                     if text1[i1 as usize] != text2[i2 as usize] {
                         break;
                     }

@@ -8,11 +8,11 @@ pub fn speedtest_benchmark(c: &mut Criterion) {
     let mut dmp = DiffMatchPatch::new();
     dmp.diff_timeout = None;
 
-    let _ = dmp.diff_main(text2, text1, false);
+    let _ = dmp.diff_main(&text2, &text1, false);
 
     c.bench_function("speedtest", |b| {
         b.iter(|| {
-            let _ = dmp.diff_main(text1, text2, false);
+            let _ = dmp.diff_main(&text1, &text2, false);
         })
     });
 }

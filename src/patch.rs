@@ -32,7 +32,7 @@ const PERCENT_ENCONDING_SET: AsciiSet = NON_ALPHANUMERIC
 
 /// Struct representing one patch operation.
 #[derive(Debug, PartialEq)]
-pub struct PatchObj {
+pub struct Patch {
     pub diffs: Vec<Diff>,
     pub start1: Option<usize>,
     pub start2: Option<usize>,
@@ -40,7 +40,7 @@ pub struct PatchObj {
     pub length2: usize,
 }
 
-impl fmt::Display for PatchObj {
+impl fmt::Display for Patch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let coords1 = if self.length1 == 0 {
             format!("{},0", self.start1.unwrap())

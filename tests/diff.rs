@@ -784,4 +784,210 @@ fn diff_levenshtein() {
 }
 
 #[test]
-fn diff_bisect() {}
+fn diff_bisect() {
+    // Normal
+    let mut dmp = DiffMatchPatch::new();
+
+    let a = "cat".to_chars();
+    let b = "map".to_chars();
+
+    // Since the resulting diff hasn't been normalized, it would be ok if
+    // the insertion and deletion pairs are swapped.
+    // If the order changes, tweak this test as required.
+    //self.assertEqual([(self.dmp.DIFF_DELETE, "c"), (self.dmp.DIFF_INSERT, "m"), (self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "t"), (self.dmp.DIFF_INSERT, "p")], self.dmp.diff_bisect(a, b, sys.maxsize))
+    let diff = dmp.diff_bisect(&a, &b);
+    // println!("=> {:?}", diff);
+    assert_eq!(
+        diff,
+        vec![
+            Delete("c".into()),
+            Insert("m".into()),
+            Equal("a".into()),
+            Delete("t".into()),
+            Insert("p".into())
+        ]
+    );
+    // TODO Timeout.
+    //self.assertEqual([(self.dmp.DIFF_DELETE, "cat"), (self.dmp.DIFF_INSERT, "map")], self.dmp.diff_bisect(a, b, 0))
+}
+
+/// Perform a trivial diff.
+#[test]
+fn diff_main() {
+    let mut dmp = DiffMatchPatch::new();
+
+    // Null case.
+    //self.assertEqual([], self.dmp.diff_main("", "", False))
+    let diff = dmp.diff_main(&"".to_chars(), &"".to_chars(), false);
+    assert_eq!(diff, vec![]);
+
+    // Equality.
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "abc")], self.dmp.diff_main("abc", "abc", False))
+    let diff = dmp.diff_main(&"abc".to_chars(), &"abc".to_chars(), false);
+    assert_eq!(diff, vec![Equal("abc".into())]);
+
+    // Simple insertion.
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "ab"), (self.dmp.DIFF_INSERT, "123"), (self.dmp.DIFF_EQUAL, "c")], self.dmp.diff_main("abc", "ab123c", False))
+    let diff = dmp.diff_main(&"abc".to_chars(), &"ab123c".to_chars(), false);
+    assert_eq!(diff, vec![Equal("ab".into()), Insert("123".into()), Equal("c".into())]);
+
+    // Simple deletion.
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "123"), (self.dmp.DIFF_EQUAL, "bc")], self.dmp.diff_main("a123bc", "abc", False))
+    let diff = dmp.diff_main(&"a123bc".to_chars(), &"abc".to_chars(), false);
+    assert_eq!(diff, vec![Equal("a".into()), Delete("123".into()), Equal("bc".into())]);
+
+    // Two insertions.
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_INSERT, "123"), (self.dmp.DIFF_EQUAL, "b"), (self.dmp.DIFF_INSERT, "456"), (self.dmp.DIFF_EQUAL, "c")], self.dmp.diff_main("abc", "a123b456c", False))
+    let diff = dmp.diff_main(&"abc".to_chars(), &"a123b456c".to_chars(), false);
+    assert_eq!(
+        diff,
+        vec![
+            Equal("a".into()),
+            Insert("123".into()),
+            Equal("b".into()),
+            Insert("456".into()),
+            Equal("c".into())
+        ]
+    );
+
+    // Two deletions.
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "123"), (self.dmp.DIFF_EQUAL, "b"), (self.dmp.DIFF_DELETE, "456"), (self.dmp.DIFF_EQUAL, "c")], self.dmp.diff_main("a123b456c", "abc", False))
+    let diff = dmp.diff_main(&"a123b456c".to_chars(), &"abc".to_chars(), false);
+    assert_eq!(
+        diff,
+        vec![
+            Equal("a".into()),
+            Delete("123".into()),
+            Equal("b".into()),
+            Delete("456".into()),
+            Equal("c".into())
+        ]
+    );
+
+    // Perform a real diff.
+    // Switch off the timeout.
+    dmp.diff_timeout = None;
+    //self.assertEqual([(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_INSERT, "b")], self.dmp.diff_main("a", "b", False))
+    let diff = dmp.diff_main(&"a".to_chars(), &"b".to_chars(), false);
+    assert_eq!(diff, vec![Delete("a".into()), Insert("b".into())]);
+
+    // self.assertEqual([(self.dmp.DIFF_DELETE, "Apple"), (self.dmp.DIFF_INSERT, "Banana"), (self.dmp.DIFF_EQUAL, "s are a"), (self.dmp.DIFF_INSERT, "lso"), (self.dmp.DIFF_EQUAL, " fruit.")], self.dmp.diff_main("Apples are a fruit.", "Bananas are also fruit.", False))
+    let diff = dmp.diff_main(
+        &"Apples are a fruit.".to_chars(),
+        &"Bananas are also fruit.".to_chars(),
+        false,
+    );
+    assert_eq!(
+        diff,
+        vec![
+            Delete("Apple".into()),
+            Insert("Banana".into()),
+            Equal("s are a".into()),
+            Insert("lso".into()),
+            Equal(" fruit.".into())
+        ]
+    );
+
+    //    self.assertEqual([(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_INSERT, "\u0680"), (self.dmp.DIFF_EQUAL, "x"), (self.dmp.DIFF_DELETE, "\t"), (self.dmp.DIFF_INSERT, "\x00")], self.dmp.diff_main("ax\t", "\u0680x\x00", False))
+    let diff = dmp.diff_main(&"ax\t".to_chars(), &"\u{0680}x\x00".to_chars(), false);
+    assert_eq!(
+        diff,
+        vec![
+            Delete("a".into()),
+            Insert("\u{0680}".into()),
+            Equal("x".into()),
+            Delete("\t".into()),
+            Insert("\x00".into())
+        ]
+    );
+
+    // Overlaps.
+    //self.assertEqual([(self.dmp.DIFF_DELETE, "1"), (self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "y"), (self.dmp.DIFF_EQUAL, "b"), (self.dmp.DIFF_DELETE, "2"), (self.dmp.DIFF_INSERT, "xab")], self.dmp.diff_main("1ayb2", "abxab", False))
+    let diff = dmp.diff_main(&"1ayb2".to_chars(), &"abxab".to_chars(), false);
+    assert_eq!(
+        diff,
+        vec![
+            Delete("1".into()),
+            Equal("a".into()),
+            Delete("y".into()),
+            Equal("b".into()),
+            Delete("2".into()),
+            Insert("xab".into())
+        ]
+    );
+
+    //self.assertEqual([(self.dmp.DIFF_INSERT, "xaxcx"), (self.dmp.DIFF_EQUAL, "abc"), (self.dmp.DIFF_DELETE, "y")], self.dmp.diff_main("abcy", "xaxcxabc", False))
+    let diff = dmp.diff_main(&"abcy".to_chars(), &"xaxcxabc".to_chars(), false);
+    assert_eq!(diff, vec![Insert("xaxcx".into()), Equal("abc".into()), Delete("y".into())]);
+
+    // self.assertEqual([(self.dmp.DIFF_DELETE, "ABCD"), (self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "="), (self.dmp.DIFF_INSERT, "-"), (self.dmp.DIFF_EQUAL, "bcd"), (self.dmp.DIFF_DELETE, "="), (self.dmp.DIFF_INSERT, "-"), (self.dmp.DIFF_EQUAL, "efghijklmnopqrs"), (self.dmp.DIFF_DELETE, "EFGHIJKLMNOefg")], self.dmp.diff_main("ABCDa=bcd=efghijklmnopqrsEFGHIJKLMNOefg", "a-bcd-efghijklmnopqrs", False))
+    let diff = dmp.diff_main(
+        &"ABCDa=bcd=efghijklmnopqrsEFGHIJKLMNOefg".to_chars(),
+        &"a-bcd-efghijklmnopqrs".to_chars(),
+        false,
+    );
+    assert_eq!(
+        diff,
+        vec![
+            Delete("ABCD".into()),
+            Equal("a".into()),
+            Delete("=".into()),
+            Insert("-".into()),
+            Equal("bcd".into()),
+            Delete("=".into()),
+            Insert("-".into()),
+            Equal("efghijklmnopqrs".into()),
+            Delete("EFGHIJKLMNOefg".into())
+        ]
+    );
+
+    // Large equality.
+    //  self.assertEqual([(self.dmp.DIFF_INSERT, " "), (self.dmp.DIFF_EQUAL,"a"), (self.dmp.DIFF_INSERT,"nd"), (self.dmp.DIFF_EQUAL," [[Pennsylvania]]"), (self.dmp.DIFF_DELETE," and [[New")], self.dmp.diff_main("a [[Pennsylvania]] and [[New", " and [[Pennsylvania]]", False))
+    let diff = dmp.diff_main(
+        &"a [[Pennsylvania]] and [[New".to_chars(),
+        &" and [[Pennsylvania]]".to_chars(),
+        false,
+    );
+    assert_eq!(
+        diff,
+        vec![
+            Insert(" ".into()),
+            Equal("a".into()),
+            Insert("nd".into()),
+            Equal(" [[Pennsylvania]]".into()),
+            Delete(" and [[New".into())
+        ]
+    );
+
+    // TODO: Timeout.
+
+    // Simple line-mode.
+    //a = "1234567890\n" * 13
+    //b = "abcdefghij\n" * 13
+    //self.assertEqual(self.dmp.diff_main(a, b, False), self.dmp.diff_main(a, b, True))
+    let a = "1234567890\n".repeat(13);
+    let b = "abcdefghij\n".repeat(13);
+    let diff = dmp.diff_main(&a.to_chars(), &b.to_chars(), false);
+    let diff2 = dmp.diff_main(&a.to_chars(), &b.to_chars(), true);
+    assert_eq!(diff, diff2);
+
+    // Single line-mode.
+    //a = "1234567890" * 13
+    //b = "abcdefghij" * 13
+    //self.assertEqual(self.dmp.diff_main(a, b, False), self.dmp.diff_main(a, b, True))
+    let a = "1234567890".repeat(13);
+    let b = "abcdefghij".repeat(13);
+    let diff = dmp.diff_main(&a.to_chars(), &b.to_chars(), false);
+    let diff2 = dmp.diff_main(&a.to_chars(), &b.to_chars(), true);
+    assert_eq!(diff, diff2);
+
+    // Overlap line-mode.
+    //a = "1234567890\n" * 13
+    //b = "abcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n"
+    //texts_linemode = self.diff_rebuildtexts(self.dmp.diff_main(a, b, True))
+    //texts_textmode = self.diff_rebuildtexts(self.dmp.diff_main(a, b, False))
+    //self.assertEqual(texts_textmode, texts_linemode)
+    //let a = "1234567890\n".repeat(13);
+    //let b = "abcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n1234567890\n1234567890\n1234567890\nabcdefghij\n";
+    // TODO diff_rebuildtexts
+}

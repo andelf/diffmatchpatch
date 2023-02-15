@@ -16,7 +16,7 @@ fn patch_obj() {
        self.assertEqual("@@ -21,18 +22,17 @@\n jump\n-s\n+ed\n  over \n-the\n+a\n %0Alaz\n", strp)
 
     */
-    let p = PatchObj {
+    let p = Patch {
         start1: Some(20),
         start2: Some(21),
         length1: 18,
