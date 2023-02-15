@@ -195,10 +195,10 @@ pub fn diff_lines_to_chars() {
     ];
 
     for (t1, t2, e1, e2, arr) in CASES {
-        let (ee1, ee2, arrr) = dmp.diff_lines_to_chars(t1, t2);
+        let (ee1, ee2, arrr) = dmp.diff_lines_to_chars(&t1.to_chars(), &t2.to_chars());
         assert_eq!(ee1, Chars::from(*e1));
         assert_eq!(ee2, Chars::from(*e2));
-        assert_eq!(arrr, arr.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        assert_eq!(arrr, arr.iter().map(|s| s.to_chars()).collect::<Vec<_>>());
     }
 
     // TODO: More than 256 to reveal any 8-bit limitations
@@ -219,16 +219,16 @@ fn diff_chars_to_lines() {
     );
 
     let n = 300;
-    let mut line_list = (1..=n).map(|c| c.to_string() + "\n").collect::<Vec<_>>();
+    let mut line_list = (1..=n).map(|c| Chars::from(c.to_string() + "\n")).collect::<Vec<_>>();
     let lines = line_list.clone().concat();
     let chars = (1..=n).map(|c| char::from_u32(c as u32).unwrap()).collect::<String>();
 
-    line_list.insert(0, "".into());
+    line_list.insert(0, Chars::from(""));
     let mut diffs = vec![Delete(chars.into())];
 
     dmp.diff_chars_to_lines(&mut diffs, &line_list);
     // println!("=> {:?}", diffs);
-    assert_eq!(diffs[0].text(), lines.to_chars());
+    assert_eq!(diffs[0].text(), lines);
 
     // TODO: More than 1,114,112 to verify any 17 * 16-bit limitation.
 }
@@ -782,3 +782,6 @@ fn diff_levenshtein() {
     let diffs = vec![Delete("abc".into()), Equal("xyz".into()), Insert("1234".into())];
     assert_eq!(7, dmp.diff_levenshtein(&diffs));
 }
+
+#[test]
+fn diff_bisect() {}

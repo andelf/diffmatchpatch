@@ -31,7 +31,7 @@ fn patch_obj() {
             Diff::Equal("\nlaz".into()),
         ],
     };
-    let strp = format!("{}", p);
-    println!("{}", strp);
+    let strp = format!("{p}");
+    println!("{strp}");
     assert_eq!("@@ -21,18 +22,17 @@\n jump\n-s\n+ed\n  over \n-the\n+a\n %0Alaz\n", strp);
 }

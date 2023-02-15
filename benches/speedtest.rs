@@ -2,8 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use diffmatchpatch::*;
 
 pub fn speedtest_benchmark(c: &mut Criterion) {
-    let text1 = include_str!("speedtest1.txt"); // .to_chars();
-    let text2 = include_str!("speedtest2.txt"); //.to_chars();
+    let text1 = include_str!("speedtest1.txt").to_chars();
+    let text2 = include_str!("speedtest2.txt").to_chars();
 
     let mut dmp = DiffMatchPatch::new();
     dmp.diff_timeout = None;

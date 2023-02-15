@@ -58,15 +58,15 @@ impl fmt::Display for PatchObj {
             format!("{},{}", self.start2.unwrap() + 1, self.length2)
         };
 
-        write!(f, "@@ -{} +{} @@\n", coords1, coords2)?;
+        writeln!(f, "@@ -{coords1} +{coords2} @@")?;
         // TODO: Escape the body of the patch with %xx notation.
         for d in &self.diffs {
             let text = d.text().to_string();
             let encoded = utf8_percent_encode(&text, &PERCENT_ENCONDING_SET).to_string();
             match d {
-                Diff::Insert(x) => write!(f, "+{}\n", encoded)?,
-                Diff::Delete(x) => write!(f, "-{}\n", encoded)?,
-                Diff::Equal(x) => write!(f, " {}\n", encoded)?,
+                Diff::Insert(_) => writeln!(f, "+{encoded}")?,
+                Diff::Delete(_) => writeln!(f, "-{encoded}")?,
+                Diff::Equal(_) => writeln!(f, " {encoded}")?,
             }
         }
         Ok(())
