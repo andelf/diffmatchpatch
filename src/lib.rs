@@ -1248,6 +1248,36 @@ impl DiffMatchPatch {
         last_chars2 + (loc - last_chars1)
     }
 
+    /*
+      Compute the Levenshtein distance; the number of inserted, deleted or
+      substituted characters.
+
+      Args:
+          diffs: Vector of diff object.
+
+      Returns:
+          Number of changes.
+    */
+    pub fn diff_levenshtein(&self, diffs: &[Diff]) -> usize {
+        let mut levenshtein = 0;
+        let mut insertions = 0;
+        let mut deletions = 0;
+        for adiff in diffs {
+            if adiff.is_insert() {
+                insertions += adiff.text().len();
+            } else if adiff.is_delete() {
+                deletions += adiff.text().len();
+            } else {
+                // A deletion and an insertion is one substitution.
+                levenshtein += usize::max(insertions, deletions);
+                insertions = 0;
+                deletions = 0;
+            }
+        }
+        levenshtein += usize::max(insertions, deletions);
+        levenshtein
+    }
+
     // unimplemented:
     // DiffPrettyHtml
     // DiffDelta

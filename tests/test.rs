@@ -757,3 +757,28 @@ fn test_diff_xindex() {
     let diffs = vec![Equal("a".into()), Delete("1234".into()), Equal("xyz".into())];
     assert_eq!(1, dmp.diff_xindex(&diffs, 3));
 }
+
+#[test]
+fn test_diff_levenshtein() {
+    let dmp = DiffMatchPatch::new();
+    /*
+     # Levenshtein with trailing equality.
+    self.assertEqual(4, self.dmp.diff_levenshtein([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "1234"), (self.dmp.DIFF_EQUAL, "xyz")]))
+    */
+    let diffs = vec![Delete("abc".into()), Insert("1234".into()), Equal("xyz".into())];
+    assert_eq!(4, dmp.diff_levenshtein(&diffs));
+
+    /*
+    # Levenshtein with leading equality.
+    self.assertEqual(4, self.dmp.diff_levenshtein([(self.dmp.DIFF_EQUAL, "xyz"), (self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_INSERT, "1234")]))
+    */
+    let diffs = vec![Equal("xyz".into()), Delete("abc".into()), Insert("1234".into())];
+    assert_eq!(4, dmp.diff_levenshtein(&diffs));
+
+    /*
+    # Levenshtein with middle equality.
+    self.assertEqual(7, self.dmp.diff_levenshtein([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_EQUAL, "xyz"), (self.dmp.DIFF_INSERT, "1234")]))
+    */
+    let diffs = vec![Delete("abc".into()), Equal("xyz".into()), Insert("1234".into())];
+    assert_eq!(7, dmp.diff_levenshtein(&diffs));
+}
