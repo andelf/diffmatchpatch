@@ -329,6 +329,8 @@ fn test_diff_cleanup_merge() {
 
 #[test]
 fn test_diff_cleanup_semantic_lossless() {
+    use Diff::*;
+
     // Slide diffs to match logical boundaries.
     let dmp = DiffMatchPatch::new();
 
@@ -336,4 +338,23 @@ fn test_diff_cleanup_semantic_lossless() {
     let mut diffs = vec![];
     dmp.diff_cleanup_semantic_lossless(&mut diffs);
     assert!(diffs.is_empty());
+
+    // Blank lines.
+    //diffs = [(self.dmp.DIFF_EQUAL, "AAA\r\n\r\nBBB"), (self.dmp.DIFF_INSERT, "\r\nDDD\r\n\r\nBBB"), (self.dmp.DIFF_EQUAL, "\r\nEEE")]
+    //self.dmp.diff_cleanupSemanticLossless(diffs)
+    //self.assertEqual([(self.dmp.DIFF_EQUAL, "AAA\r\n\r\n"), (self.dmp.DIFF_INSERT, "BBB\r\nDDD\r\n\r\n"), (self.dmp.DIFF_EQUAL, "BBB\r\nEEE")], diffs)
+    let mut diffs = vec![
+        Equal("AAA\r\n\r\nBBB".into()),
+        Insert("\r\nDDD\r\n\r\nBBB".into()),
+        Equal("\r\nEEE".into()),
+    ];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert_eq!(
+        diffs,
+        vec![
+            Equal("AAA\r\n\r\n".into()),
+            Insert("BBB\r\nDDD\r\n\r\n".into()),
+            Equal("BBB\r\nEEE".into()),
+        ]
+    );
 }
