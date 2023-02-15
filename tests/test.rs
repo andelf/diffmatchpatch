@@ -61,8 +61,8 @@ fn test_diff_half_match() {
     // No match
     assert_eq!(None, dmp.diff_half_match(&"1234567890".to_chars(), &"abcdef".to_chars()));
     assert_eq!(None, dmp.diff_half_match(&"12345".to_chars(), &"23".to_chars()));
-    // Single Match
 
+    // Single Match
     let text1 = "1234567890".to_chars();
     let text2 = "a345678z".to_chars();
     let matches = dmp.diff_half_match(&text1, &text2);
@@ -209,16 +209,13 @@ fn test_diff_chars_to_lines() {
     let dmp = DiffMatchPatch::new();
 
     // Convert chars up to lines.
-    let mut diffs = vec![Diff::Equal("\x01\x02\x01".into()), Diff::Insert("\x02\x01\x02".into())];
+    let mut diffs = vec![Equal("\x01\x02\x01".into()), Insert("\x02\x01\x02".into())];
 
     dmp.diff_chars_to_lines(&mut diffs, &vec!["".into(), "alpha\n".into(), "beta\n".into()]);
     //println!("=> {:?}", diffs);
     assert_eq!(
         diffs,
-        vec![
-            Diff::Equal("alpha\nbeta\nalpha\n".into()),
-            Diff::Insert("beta\nalpha\nbeta\n".into()),
-        ]
+        vec![Equal("alpha\nbeta\nalpha\n".into()), Insert("beta\nalpha\nbeta\n".into()),]
     );
 
     let n = 300;
@@ -227,7 +224,7 @@ fn test_diff_chars_to_lines() {
     let chars = (1..=n).map(|c| char::from_u32(c as u32).unwrap()).collect::<String>();
 
     line_list.insert(0, "".into());
-    let mut diffs = vec![Diff::Delete(chars.into())];
+    let mut diffs = vec![Delete(chars.into())];
 
     dmp.diff_chars_to_lines(&mut diffs, &line_list);
     // println!("=> {:?}", diffs);
@@ -248,21 +245,19 @@ fn test_diff_cleanup_merge() {
     assert!(diffs.is_empty());
 
     // Merge equalities
-    let mut diffs = vec![Diff::Equal("a".into()), Diff::Equal("b".into()), Diff::Equal("c".into())];
+    let mut diffs = vec![Equal("a".into()), Equal("b".into()), Equal("c".into())];
     dmp.diff_cleanup_merge(&mut diffs);
-    assert_eq!(diffs, vec![Diff::Equal("abc".into())]);
+    assert_eq!(diffs, vec![Equal("abc".into())]);
 
     // Merge deletions
-    let mut diffs =
-        vec![Diff::Delete("a".into()), Diff::Delete("b".into()), Diff::Delete("c".into())];
+    let mut diffs = vec![Delete("a".into()), Delete("b".into()), Delete("c".into())];
     dmp.diff_cleanup_merge(&mut diffs);
-    assert_eq!(diffs, vec![Diff::Delete("abc".into())]);
+    assert_eq!(diffs, vec![Delete("abc".into())]);
 
     // Merge insertions
-    let mut diffs =
-        vec![Diff::Insert("a".into()), Diff::Insert("b".into()), Diff::Insert("c".into())];
+    let mut diffs = vec![Insert("a".into()), Insert("b".into()), Insert("c".into())];
     dmp.diff_cleanup_merge(&mut diffs);
-    assert_eq!(diffs, vec![Diff::Insert("abc".into())]);
+    assert_eq!(diffs, vec![Insert("abc".into())]);
 
     // Prefix and suffix detection
     let mut diffs = vec![Delete("a".into()), Insert("abc".into()), Delete("dc".into())];
