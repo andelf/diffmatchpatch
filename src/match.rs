@@ -19,13 +19,12 @@ impl DiffMatchPatch {
     pub fn match_main(&mut self, text: &[char], pattern: &[char], mut loc: usize) -> Option<usize> {
         loc = usize::min(loc, text.len());
 
-        if pattern.is_empty() || text.is_empty() {
-            return None;
-        }
-
         if text == pattern {
             // Shortcut (potentially not guaranteed by the algorithm)
             return Some(0);
+        } else if text.is_empty() {
+            // Nothing to match.
+            return None;
         } else if loc + pattern.len() <= text.len()
             && text[(loc)..(loc + pattern.len())].to_vec() == pattern
         {

@@ -104,3 +104,38 @@ fn match_bitap() {
         dmp.match_bitap(&"abcdefghijklmnopqrstuvwxyz".to_chars(), &"abcdefg".to_chars(), 24)
     );
 }
+
+#[test]
+fn match_main() {
+    let mut dmp = DiffMatchPatch::new();
+    // Shortcut matches.
+    //self.assertEqual(0, self.dmp.match_main("abcdef", "abcdef", 1000))
+    assert_eq!(Some(0), dmp.match_main(&"abcdef".to_chars(), &"abcdef".to_chars(), 1000));
+
+    //self.assertEqual(-1, self.dmp.match_main("", "abcdef", 1))
+    assert_eq!(None, dmp.match_main(&"".to_chars(), &"abcdef".to_chars(), 1));
+
+    //self.assertEqual(3, self.dmp.match_main("abcdef", "", 3))
+    assert_eq!(Some(3), dmp.match_main(&"abcdef".to_chars(), &"".to_chars(), 3));
+
+    //self.assertEqual(3, self.dmp.match_main("abcdef", "de", 3))
+    assert_eq!(Some(3), dmp.match_main(&"abcdef".to_chars(), &"de".to_chars(), 3));
+
+    //self.assertEqual(3, self.dmp.match_main("abcdef", "defy", 4))
+    assert_eq!(Some(3), dmp.match_main(&"abcdef".to_chars(), &"defy".to_chars(), 4));
+
+    //self.assertEqual(0, self.dmp.match_main("abcdef", "abcdefy", 0))
+    assert_eq!(Some(0), dmp.match_main(&"abcdef".to_chars(), &"abcdefy".to_chars(), 0));
+
+    // Complex match.
+    dmp.match_threshold = 0.7;
+    //  self.assertEqual(4, self.dmp.match_main("I am the very model of a modern major general.", " that berry ", 5))
+    assert_eq!(
+        Some(4),
+        dmp.match_main(
+            &"I am the very model of a modern major general.".to_chars(),
+            &" that berry ".to_chars(),
+            5
+        )
+    );
+}
