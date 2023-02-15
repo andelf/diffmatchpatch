@@ -290,19 +290,11 @@ fn test_diff_cleanup_merge() {
     assert_eq!(diffs, vec![Insert("ab".into()), Equal("ac".into())]);
 
     // Slide edit right.
-    // diffs = [(self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_INSERT, "ab"), (self.dmp.DIFF_EQUAL, "a")]
-    // self.dmp.diff_cleanupMerge(diffs)
-    // self.assertEqual([(self.dmp.DIFF_EQUAL, "ca"), (self.dmp.DIFF_INSERT, "ba")], diffs)
-
     let mut diffs = vec![Equal("c".into()), Insert("ab".into()), Equal("a".into())];
     dmp.diff_cleanup_merge(&mut diffs);
     assert_eq!(diffs, vec![Equal("ca".into()), Insert("ba".into())]);
 
     // Slide edit left recursive.
-    // diffs = [(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_DELETE, "ac"), (self.dmp.DIFF_EQUAL, "x")]
-    // self.dmp.diff_cleanupMerge(diffs)
-    //self.assertEqual([(self.dmp.DIFF_DELETE, "abc"), (self.dmp.DIFF_EQUAL, "acx")], diffs)
-
     let mut diffs = vec![
         Equal("a".into()),
         Delete("b".into()),
@@ -314,10 +306,6 @@ fn test_diff_cleanup_merge() {
     assert_eq!(diffs, vec![Delete("abc".into()), Equal("acx".into())]);
 
     // Slide edit right recursive.
-    //diffs = [(self.dmp.DIFF_EQUAL, "x"), (self.dmp.DIFF_DELETE, "ca"), (self.dmp.DIFF_EQUAL, "c"), (self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_EQUAL, "a")]
-    //self.dmp.diff_cleanupMerge(diffs)
-    //self.assertEqual([(self.dmp.DIFF_EQUAL, "xca"), (self.dmp.DIFF_DELETE, "cba")], diffs)
-
     let mut diffs = vec![
         Equal("x".into()),
         Delete("ca".into()),
@@ -329,19 +317,11 @@ fn test_diff_cleanup_merge() {
     assert_eq!(diffs, vec![Equal("xca".into()), Delete("cba".into())]);
 
     // Empty merge.
-    //diffs = [(self.dmp.DIFF_DELETE, "b"), (self.dmp.DIFF_INSERT, "ab"), (self.dmp.DIFF_EQUAL, "c")]
-    //self.dmp.diff_cleanupMerge(diffs)
-    //self.assertEqual([(self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "bc")], diffs)
-
     let mut diffs = vec![Delete("b".into()), Insert("ab".into()), Equal("c".into())];
     dmp.diff_cleanup_merge(&mut diffs);
     assert_eq!(diffs, vec![Insert("a".into()), Equal("bc".into())]);
 
     // Empty equality.
-    // diffs = [(self.dmp.DIFF_EQUAL, ""), (self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "b")]
-    //self.dmp.diff_cleanupMerge(diffs)
-    //self.assertEqual([(self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, "b")], diffs)
-
     let mut diffs = vec![Equal("".into()), Insert("a".into()), Equal("b".into())];
     dmp.diff_cleanup_merge(&mut diffs);
     assert_eq!(diffs, vec![Insert("a".into()), Equal("b".into())]);
