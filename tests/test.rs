@@ -326,3 +326,14 @@ fn test_diff_cleanup_merge() {
     dmp.diff_cleanup_merge(&mut diffs);
     assert_eq!(diffs, vec![Insert("a".into()), Equal("b".into())]);
 }
+
+#[test]
+fn test_diff_cleanup_semantic_lossless() {
+    // Slide diffs to match logical boundaries.
+    let dmp = DiffMatchPatch::new();
+
+    // Null case.
+    let mut diffs = vec![];
+    dmp.diff_cleanup_semantic_lossless(&mut diffs);
+    assert!(diffs.is_empty());
+}

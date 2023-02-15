@@ -790,4 +790,151 @@ impl DiffMatchPatch {
             self.diff_cleanup_merge(diffs);
         }
     }
+
+    /**
+      Look for single edits surrounded on both sides by equalities
+      which can be shifted sideways to align the edit to a word boundary.
+      e.g: The c<ins>at c</ins>ame. -> The <ins>cat </ins>came.
+
+      Args:
+          diffs: Vector of diff object.
+    */
+    pub fn diff_cleanup_semantic_lossless(&self, diffs: &mut Vec<Diff>) {
+        /**
+        Given two strings, compute a score representing whether the
+        internal boundary falls on logical boundaries.
+        Scores range from 6 (best) to 0 (worst).
+        Closure, but does not reference any external variables.
+
+        Args:
+            one: First chars.
+            two: Second chars.
+
+        Returns:
+            The score.
+        */
+        fn diff_cleanup_semantic_score(one: &[char], two: &[char]) -> i32 {
+            if one.is_empty() || two.is_empty() {
+                // Edges are the best.
+                return 6;
+            }
+
+            // Each port of this function behaves slightly differently due to
+            // subtle differences in each language's definition of things like
+            // 'whitespace'.  Since this function's purpose is largely cosmetic,
+            // the choice has been made to use each language's native features
+            // rather than force total conformity.
+            let char1 = one[one.len() - 1];
+            let char2 = two[0];
+            let nonalphanumeric1: bool = !char1.is_alphanumeric();
+            let nonalphanumeric2: bool = !char2.is_alphanumeric();
+            let whitespace1: bool = nonalphanumeric1 & char1.is_whitespace();
+            let whitespace2: bool = nonalphanumeric2 & char2.is_whitespace();
+            let linebreak1: bool = whitespace1 & ((char1 == '\r') | (char1 == '\n'));
+            let linebreak2: bool = whitespace2 & ((char2 == '\r') | (char2 == '\n'));
+
+            let mut blanklineend1: bool =
+                one.ends_with(&['\n', '\n']) || one.ends_with(&['\n', '\r', 'n']);
+            let mut blanklinestart2: bool =
+                two.starts_with(&['\n', '\n']) || two.starts_with(&['\r', '\n', '\r', '\n']);
+
+            let blankline1: bool = linebreak1 & blanklineend1;
+            let blankline2: bool = linebreak2 & blanklinestart2;
+
+            if blankline1 || blankline2 {
+                // Five points for blank lines.
+                return 5;
+            }
+            if linebreak1 || linebreak2 {
+                // Four points for line breaks.
+                return 4;
+            }
+            if nonalphanumeric1 && !whitespace1 && whitespace2 {
+                // Three points for end of sentences.
+                return 3;
+            }
+            if whitespace1 || whitespace2 {
+                // Two points for whitespace.
+                return 2;
+            }
+            if nonalphanumeric1 || nonalphanumeric2 {
+                // One point for non-alphanumeric.
+                return 1;
+            }
+            0
+        }
+
+        let mut i = 1;
+
+        //Intentionally ignore the first and last element (don't need checking).
+        while i < diffs.len() as i32 - 1 {
+            if diffs[i as usize - 1].is_equal() && diffs[i as usize + 1].is_equal() {
+                // This is a single edit surrounded by equalities.
+                // NOTE: sting concat operations, so use owned Chars type
+                let mut equality1 = diffs[i as usize - 1].text().clone();
+                let mut edit = diffs[i as usize].text().clone();
+                let mut equality2 = diffs[i as usize + 1].text().clone();
+
+                //let mut edit_vec: Vec<char> = edit.chars().collect();
+                //let mut equality1_vec: Vec<char> = equality1.chars().collect();
+                //let mut equality2_vec: Vec<char> = equality2.chars().collect();
+
+                // First, shift the edit as far left as possible.
+                let common_offset =
+                    self.diff_common_suffix(diffs[i as usize - 1].text(), diffs[i as usize].text());
+                if common_offset != 0 {
+                    let common_string = &edit[(edit.len() - common_offset)..];
+                    let temp1 =
+                        Chars::from(common_string) + edit.slice_from(-(common_offset as isize));
+                    let temp2 = Chars::from(common_string) + &equality2;
+                    equality1 = Chars::from(&equality1[..(equality1.len() - common_offset)]);
+                    edit = temp1;
+                    equality2 = temp2;
+                }
+                // Second, step character by character right, looking for the best fit.
+                let mut best_equality1 = equality1.clone();
+                let mut best_edit = edit.clone();
+                let mut best_equality2 = equality2.clone();
+
+                let mut best_score = diff_cleanup_semantic_score(&equality1, &edit)
+                    + diff_cleanup_semantic_score(&edit, &equality2);
+
+                while edit.len() > 0 && equality2.len() > 0 && edit[0] == equality2[0] {
+                    equality1.push(edit[0]);
+                    edit.remove(0);
+                    edit.push(equality2[0]);
+                    equality2.remove(0);
+
+                    let score = diff_cleanup_semantic_score(&equality1, &edit)
+                        + diff_cleanup_semantic_score(&edit, &equality2);
+
+                    // The >= encourages trailing rather than leading whitespace on edits.
+                    if score >= best_score {
+                        best_score = score;
+                        best_equality1 = equality1.clone();
+                        best_edit = edit.clone();
+                        best_equality2 = equality2.clone();
+                    }
+                }
+
+                if diffs[i as usize - 1].text() != &best_equality1 {
+                    // We have an improvement, save it back to the diff.
+                    if !best_equality1.is_empty() {
+                        *diffs[i as usize - 1].text_mut() = best_equality1;
+                    } else {
+                        diffs.remove(i as usize - 1);
+                        i -= 1;
+                    }
+                    *diffs[i as usize].text_mut() = best_edit;
+                    if !best_equality2.is_empty() {
+                        *diffs[i as usize + 1].text_mut() = best_equality2;
+                    } else {
+                        diffs.remove(i as usize + 1);
+                        i += 1;
+                    }
+                }
+            }
+            i += 1;
+        }
+    }
 }

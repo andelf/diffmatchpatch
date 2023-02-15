@@ -33,6 +33,14 @@ impl Chars {
             &self[..i as usize]
         }
     }
+
+    pub(crate) fn slice_from(&self, i: isize) -> &[char] {
+        if i < 0 {
+            &self[self.len() - i.unsigned_abs()..]
+        } else {
+            &self[i as usize..]
+        }
+    }
 }
 
 impl PartialEq<[char]> for Chars {
