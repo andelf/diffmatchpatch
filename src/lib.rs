@@ -58,18 +58,6 @@ pub struct DiffMatchPatch {
     pub patch_delete_threshold: f32,
 }
 
-pub fn new() -> DiffMatchPatch {
-    DiffMatchPatch {
-        diff_timeout: None,
-        patch_delete_threshold: 0.5,
-        edit_cost: 0,
-        match_distance: 1000,
-        patch_margin: 4,
-        match_maxbits: 32,
-        match_threshold: 0.5,
-    }
-}
-
 impl Default for DiffMatchPatch {
     fn default() -> Self {
         Self::new()
@@ -543,6 +531,11 @@ impl DiffMatchPatch {
         linearray: &'a mut Vec<Chars>,
         linehash: &'a mut HashMap<Chars, u32>,
     ) -> Chars {
+        // Rust char type:
+        // 0..<d800
+        // d800..<e000
+        // e000..<110000
+
         let mut chars = Chars::new();
         // Walk the text, pulling out a substring for each line.
         // text.split('\n') would would temporarily double our memory footprint.
@@ -1202,8 +1195,22 @@ impl DiffMatchPatch {
         levenshtein
     }
 
-    pub fn diff_to_delta(&self, _diffs: &[Diff]) -> String {
-        unimplemented!()
+    pub fn diff_to_delta(&self, diffs: &[Diff]) -> String {
+        diffs
+            .iter()
+            .map(|d| match d {
+                Diff::Insert(text) => {
+                    format!("+{}", text.to_safe_encode())
+                }
+                Diff::Delete(text) => {
+                    format!("-{}", text.len())
+                }
+                Diff::Equal(text) => {
+                    format!("={}", text.len())
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\t")
     }
 
     pub fn diff_from_delta(&self, _text1: &mut Chars, _delta: &str) {
@@ -1227,7 +1234,7 @@ impl DiffMatchPatch {
     }
 
     fn diff_bisect_internal(
-        &mut self,
+        &self,
         text1: &[char],
         text2: &[char],
         start_time: Instant,
@@ -1396,7 +1403,7 @@ impl DiffMatchPatch {
             Vector of diffs as changes.
     */
     fn diff_bisect_split(
-        &mut self,
+        &self,
         text1: &[char],
         text2: &[char],
         x: usize,
@@ -1433,7 +1440,7 @@ impl DiffMatchPatch {
     }
 
     fn diff_main_internal(
-        &mut self,
+        &self,
         text1: &[char],
         text2: &[char],
         checklines: bool,
@@ -1441,8 +1448,6 @@ impl DiffMatchPatch {
     ) -> Vec<Diff> {
         let mut text1 = text1;
         let mut text2 = text2;
-        // TODO: deadline check
-
         // check for empty text
         if text1.is_empty() && text2.is_empty() {
             return vec![];
@@ -1505,7 +1510,7 @@ impl DiffMatchPatch {
         Vector of diffs as changes.
     */
     fn diff_compute(
-        &mut self,
+        &self,
         text1: &[char],
         text2: &[char],
         checklines: bool,
@@ -1568,19 +1573,20 @@ impl DiffMatchPatch {
                     let mut diffs_a =
                         self.diff_main_internal(text1_a, text2_a, checklines, start_time);
                     let diffs_b = self.diff_main_internal(text1_b, text2_b, checklines, start_time);
-                    diffs_a.push(Diff::Equal(mid_common.into())); // FIXME ends
+                    // Merge the result.
+                    diffs_a.push(Diff::Equal(mid_common.into()));
                     diffs_a.extend(diffs_b);
                     return diffs_a;
                 }
                 _ => unreachable!("vec used as 5-tuple"),
             }
+        }
 
-            // Merge the result.
-        }
         if checklines && text1.len() > 100 && text2.len() > 100 {
-            return self.diff_linemode_internal(text1, text2, start_time);
+            self.diff_linemode_internal(text1, text2, start_time)
+        } else {
+            self.diff_bisect_internal(text1, text2, start_time)
         }
-        self.diff_bisect_internal(text1, text2, start_time)
     }
 
     /**
@@ -1600,7 +1606,7 @@ impl DiffMatchPatch {
     }
 
     fn diff_linemode_internal(
-        &mut self,
+        &self,
         text1: &[char],
         text2: &[char],
         start_time: Instant,
@@ -1608,7 +1614,7 @@ impl DiffMatchPatch {
         // Scan the text on a line-by-line basis first.
         let (text3, text4, linearray) = self.diff_lines_to_chars(text1, text2);
 
-        let mut dmp = DiffMatchPatch::new();
+        let dmp = DiffMatchPatch::new();
         let mut diffs: Vec<Diff> = dmp.diff_main_internal(&text3, &text4, false, start_time);
 
         // Convert the diff back to original text.

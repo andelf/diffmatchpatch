@@ -1,8 +1,30 @@
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use std::{
     borrow::Borrow,
-    fmt, mem,
+    fmt::{self, Write}, mem,
     ops::{self, Deref, DerefMut},
 };
+
+// "!~*'();/?:@&=+$,# "
+const PERCENT_ENCONDING_SET: AsciiSet = NON_ALPHANUMERIC
+    .remove(b'!')
+    .remove(b'~')
+    .remove(b'*')
+    .remove(b'\'')
+    .remove(b'(')
+    .remove(b')')
+    .remove(b';')
+    .remove(b'/')
+    .remove(b'?')
+    .remove(b':')
+    .remove(b'@')
+    .remove(b'&')
+    .remove(b'=')
+    .remove(b'+')
+    .remove(b'$')
+    .remove(b',')
+    .remove(b'#')
+    .remove(b' ');
 
 /// A String with char as underlying type.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Default)]
@@ -23,6 +45,10 @@ impl Chars {
 
     pub fn take(&mut self) -> Self {
         Chars(mem::take(&mut self.0))
+    }
+
+    pub fn to_safe_encode(&self) -> String {
+        utf8_percent_encode(&self.to_string(), &PERCENT_ENCONDING_SET).to_string()
     }
 
     /// Slice with negative index support
@@ -111,7 +137,10 @@ impl From<Chars> for Vec<char> {
 
 impl fmt::Debug for Chars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0.iter().collect::<String>())
+        for c in &self.0 {
+            write!(f, "{:?}", c)?;
+        }
+        Ok(())
     }
 }
 

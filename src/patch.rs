@@ -3,32 +3,6 @@
 use std::fmt;
 
 use crate::Diff;
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
-
-// "!~*'();/?:@&=+$,# "
-const PERCENT_ENCONDING_SET: AsciiSet = NON_ALPHANUMERIC
-    .remove(b'!')
-    .remove(b'~')
-    .remove(b'*')
-    .remove(b'\'')
-    .remove(b'(')
-    .remove(b')')
-    .remove(b';')
-    .remove(b'/')
-    .remove(b'?')
-    .remove(b':')
-    .remove(b'@')
-    .remove(b'&')
-    .remove(b'=')
-    .remove(b'+')
-    .remove(b'$')
-    .remove(b',')
-    .remove(b'#')
-    .remove(b' ');
-
-//const PERCENT_ENCONDING_SET: AsciiSet = CONTROLS.remove(b'!')
-//  .remove(b'~')
-//.remove(b'*')
 
 /// Struct representing one patch operation.
 #[derive(Debug, PartialEq)]
@@ -61,12 +35,11 @@ impl fmt::Display for Patch {
         writeln!(f, "@@ -{coords1} +{coords2} @@")?;
         // TODO: Escape the body of the patch with %xx notation.
         for d in &self.diffs {
-            let text = d.text().to_string();
-            let encoded = utf8_percent_encode(&text, &PERCENT_ENCONDING_SET).to_string();
+            let text = d.text().to_safe_encode();
             match d {
-                Diff::Insert(_) => writeln!(f, "+{encoded}")?,
-                Diff::Delete(_) => writeln!(f, "-{encoded}")?,
-                Diff::Equal(_) => writeln!(f, " {encoded}")?,
+                Diff::Insert(_) => writeln!(f, "+{text}")?,
+                Diff::Delete(_) => writeln!(f, "-{text}")?,
+                Diff::Equal(_) => writeln!(f, " {text}")?,
             }
         }
         Ok(())

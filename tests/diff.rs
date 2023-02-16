@@ -25,31 +25,35 @@ impl ToCharsVec for [&str; 5] {
 fn diff_common_prefix() {
     let dmp = DiffMatchPatch::new();
 
-    assert_eq!(0, dmp.diff_common_prefix("abc".to_chars(), "xyz".to_chars()));
-    assert_eq!(4, dmp.diff_common_prefix("1234abcdef".to_chars(), "1234xyz".to_chars()));
-    assert_eq!(4, dmp.diff_common_prefix("1234".to_chars(), "1234xyz".to_chars()));
+    assert_eq!(0, dmp.diff_common_prefix(&"abc".to_chars(), &"xyz".to_chars()));
+    assert_eq!(4, dmp.diff_common_prefix(&"1234abcdef".to_chars(), &"1234xyz".to_chars()));
+    assert_eq!(4, dmp.diff_common_prefix(&"1234".to_chars(), &"1234xyz".to_chars()));
 }
 
 #[test]
 fn diff_common_suffix() {
     let dmp = DiffMatchPatch::new();
 
-    assert_eq!(0, dmp.diff_common_suffix("abc".to_chars(), "xyz".to_chars()));
-    assert_eq!(4, dmp.diff_common_suffix("abcdef1234".to_chars(), "xyz1234".to_chars()));
-    assert_eq!(4, dmp.diff_common_suffix("1234".to_chars(), "xyz1234".to_chars()));
+    assert_eq!(0, dmp.diff_common_suffix(&"abc".to_chars(), &"xyz".to_chars()));
+    assert_eq!(4, dmp.diff_common_suffix(&"abcdef1234".to_chars(), &"xyz1234".to_chars()));
+    assert_eq!(4, dmp.diff_common_suffix(&"1234".to_chars(), &"xyz1234".to_chars()));
 }
 
 #[test]
 fn diff_common_overlap() {
     let dmp = DiffMatchPatch::new();
 
-    assert_eq!(0, dmp.diff_common_overlap("".to_chars(), "abcd".to_chars()), "null case");
-    assert_eq!(3, dmp.diff_common_overlap("abc".to_chars(), "abcd".to_chars()), "whole case");
-    assert_eq!(0, dmp.diff_common_overlap("123456".to_chars(), "abcd".to_chars()), "no overlap");
-    assert_eq!(3, dmp.diff_common_overlap("123456xxx".to_chars(), "xxxabcd".to_chars()), "overlap");
+    assert_eq!(0, dmp.diff_common_overlap(&"".to_chars(), &"abcd".to_chars()), "null case");
+    assert_eq!(3, dmp.diff_common_overlap(&"abc".to_chars(), &"abcd".to_chars()), "whole case");
+    assert_eq!(0, dmp.diff_common_overlap(&"123456".to_chars(), &"abcd".to_chars()), "no overlap");
+    assert_eq!(
+        3,
+        dmp.diff_common_overlap(&"123456xxx".to_chars(), &"xxxabcd".to_chars()),
+        "overlap"
+    );
     // Some overly clever languages (C#) may treat ligatures as equal to their
     // component letters.  E.g. U+FB01 == 'fi'
-    assert_eq!(0, dmp.diff_common_overlap("fi".to_chars(), "\u{fb01}i".to_chars()), "unicode");
+    assert_eq!(0, dmp.diff_common_overlap(&"fi".to_chars(), &"\u{fb01}i".to_chars()), "unicode");
 }
 
 #[test]
@@ -740,6 +744,35 @@ fn diff_text() {
     ];
     assert_eq!(Chars::from("jumps over the lazy"), dmp.diff_text1(&diffs));
     assert_eq!(Chars::from("jumped over a lazy"), dmp.diff_text2(&diffs));
+}
+
+#[test]
+fn diff_to_delta() {
+    let dmp = DiffMatchPatch::new();
+
+    // Convert a diff into delta string.
+    //diffs = [(self.dmp.DIFF_EQUAL, "jump"), (self.dmp.DIFF_DELETE, "s"), (self.dmp.DIFF_INSERT, "ed"), (self.dmp.DIFF_EQUAL, " over "), (self.dmp.DIFF_DELETE, "the"), (self.dmp.DIFF_INSERT, "a"), (self.dmp.DIFF_EQUAL, " lazy"), (self.dmp.DIFF_INSERT, "old dog")]
+    //text1 = self.dmp.diff_text1(diffs)
+    //self.assertEqual("jumps over the lazy", text1)
+
+    let diffs = vec![
+        Equal("jump".into()),
+        Delete("s".into()),
+        Insert("ed".into()),
+        Equal(" over ".into()),
+        Delete("the".into()),
+        Insert("a".into()),
+        Equal(" lazy".into()),
+        Insert("old dog".into()),
+    ];
+    let text1 = dmp.diff_text1(&diffs);
+    assert_eq!(Chars::from("jumps over the lazy"), text1);
+
+    // delta = self.dmp.diff_toDelta(diffs)
+    //self.assertEqual("=4\t-1\t+ed\t=6\t-3\t+a\t=5\t+old dog", delta)
+    let delta = dmp.diff_to_delta(&diffs);
+    assert_eq!("=4\t-1\t+ed\t=6\t-3\t+a\t=5\t+old dog", delta);
+
 }
 
 #[test]
