@@ -1,7 +1,7 @@
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use std::{
     borrow::Borrow,
-    fmt::{self, Write}, mem,
+    fmt, mem,
     ops::{self, Deref, DerefMut},
 };
 
@@ -48,7 +48,7 @@ impl Chars {
     }
 
     pub fn to_safe_encode(&self) -> String {
-        utf8_percent_encode(&self.to_string(), &PERCENT_ENCONDING_SET).to_string()
+        utf8_percent_encode(&Into::<String>::into(self), &PERCENT_ENCONDING_SET).to_string()
     }
 
     /// Slice with negative index support
@@ -129,6 +129,12 @@ impl From<Chars> for String {
     }
 }
 
+impl From<&Chars> for String {
+    fn from(s: &Chars) -> Self {
+        s.0.iter().collect()
+    }
+}
+
 impl From<Chars> for Vec<char> {
     fn from(s: Chars) -> Self {
         s.0
@@ -137,10 +143,7 @@ impl From<Chars> for Vec<char> {
 
 impl fmt::Debug for Chars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in &self.0 {
-            write!(f, "{:?}", c)?;
-        }
-        Ok(())
+        write!(f, "{:?}", self.0.iter().collect::<String>())
     }
 }
 

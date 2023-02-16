@@ -384,8 +384,8 @@ impl DiffMatchPatch {
         the prefix of text2, the suffix of text2 and the common middle.  Or empty vector
         if there was no match.
     */
-    pub fn diff_half_match<'a, 'b>(
-        &'b self,
+    pub fn diff_half_match<'a>(
+        &self,
         text1: &'a [char],
         text2: &'a [char],
     ) -> Option<Vec<&'a [char]>> {
@@ -449,8 +449,8 @@ impl DiffMatchPatch {
         longtext, the prefix of shorttext, the suffix of shorttext and the
         common middle.  Or empty vector if there was no match.
     */
-    fn diff_half_matchi<'a, 'b>(
-        &'b self,
+    fn diff_half_matchi<'a>(
+        &self,
         long_text: &'a [char],
         short_text: &'a [char],
         i: usize,

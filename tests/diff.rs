@@ -215,7 +215,7 @@ fn diff_chars_to_lines() {
     // Convert chars up to lines.
     let mut diffs = vec![Equal("\x01\x02\x01".into()), Insert("\x02\x01\x02".into())];
 
-    dmp.diff_chars_to_lines(&mut diffs, &vec!["".into(), "alpha\n".into(), "beta\n".into()]);
+    dmp.diff_chars_to_lines(&mut diffs, &["".into(), "alpha\n".into(), "beta\n".into()]);
     //println!("=> {:?}", diffs);
     assert_eq!(
         diffs,
