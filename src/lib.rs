@@ -505,17 +505,17 @@ impl DiffMatchPatch {
     where
         T: Hash + Eq + Clone + Default,
     {
-        let mut itemarray: Vec<T> = vec![T::default()];
+        let mut item_array: Vec<T> = vec![T::default()];
         let mut itemhash: HashMap<T, u32> = HashMap::new();
-        let chars1 = self.diff_any_to_chars_munge(seq1, &mut itemarray, &mut itemhash);
-        let chars2 = self.diff_any_to_chars_munge(seq2, &mut itemarray, &mut itemhash);
-        (chars1, chars2, itemarray)
+        let chars1 = self.diff_any_to_chars_munge(seq1, &mut item_array, &mut itemhash);
+        let chars2 = self.diff_any_to_chars_munge(seq2, &mut item_array, &mut itemhash);
+        (chars1, chars2, item_array)
     }
 
     fn diff_any_to_chars_munge<T>(
         &self,
         seq: &[T],
-        itemarray: &mut Vec<T>,
+        item_array: &mut Vec<T>,
         itemhash: &mut HashMap<T, u32>,
     ) -> Chars
     where
@@ -530,7 +530,7 @@ impl DiffMatchPatch {
                     panic!("Invalid char");
                 }
             } else {
-                let mut u32char = itemarray.len() as u32;
+                let mut u32char = item_array.len() as u32;
                 // skip reserved range - U+D800 to U+DFFF
                 // unicode code points in this range can't be converted to unicode scalars
                 if u32char >= 55296 {
@@ -542,7 +542,7 @@ impl DiffMatchPatch {
                     panic!("max unicode scalar reached");
                 }
 
-                itemarray.push(item.clone());
+                item_array.push(item.clone());
                 itemhash.insert(item.clone(), u32char);
 
                 chars.push(char::from_u32(u32char).unwrap());

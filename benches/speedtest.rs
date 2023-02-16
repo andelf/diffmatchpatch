@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 
 pub fn speedtest_this(c: &mut Criterion) {
@@ -6,8 +8,8 @@ pub fn speedtest_this(c: &mut Criterion) {
     let text1 = include_str!("speedtest1.txt").to_chars();
     let text2 = include_str!("speedtest2.txt").to_chars();
 
-    let mut dmp = DiffMatchPatch::new();
-    dmp.diff_timeout = None;
+    let dmp = DiffMatchPatch::new();
+    // dmp.diff_timeout = Some(Duration::from_millis(100));
 
     let _ = dmp.diff_main(&text2, &text1, false);
 
@@ -19,6 +21,7 @@ pub fn speedtest_this(c: &mut Criterion) {
     });
 }
 
+/*
 pub fn speedtest_dissimilar(c: &mut Criterion) {
     let text1 = include_str!("speedtest1.txt");
     let text2 = include_str!("speedtest2.txt");
@@ -67,12 +70,12 @@ pub fn speedtest_diff_match_patch(c: &mut Criterion) {
         })
     });
 }
-
+*/
 criterion_group!(
     benches,
     speedtest_this,
-     speedtest_dissimilar, // has sematic Semantic Cleanup
-    speedtest_dmp,
+    // speedtest_dissimilar, // has sematic Semantic Cleanup
+    // speedtest_dmp,
     // speedtest_diff_match_patch
 );
 criterion_main!(benches);

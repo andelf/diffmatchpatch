@@ -772,7 +772,6 @@ fn diff_to_delta() {
     //self.assertEqual("=4\t-1\t+ed\t=6\t-3\t+a\t=5\t+old dog", delta)
     let delta = dmp.diff_to_delta(&diffs);
     assert_eq!("=4\t-1\t+ed\t=6\t-3\t+a\t=5\t+old dog", delta);
-
 }
 
 #[test]
