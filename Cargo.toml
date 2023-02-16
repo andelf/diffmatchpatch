@@ -16,6 +16,9 @@ percent-encoding = "2.2.0"
 
 [dev-dependencies]
 criterion = "0.4.0"
+#diff_match_patch = "0.1.1"
+#dissimilar = { path = "../dissimilar" }
+#dmp = "0.1.2"
 
 [[bench]]
 name = "speedtest"
