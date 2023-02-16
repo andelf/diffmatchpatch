@@ -70,6 +70,12 @@ pub fn new() -> DiffMatchPatch {
     }
 }
 
+impl Default for DiffMatchPatch {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// The data structure representing a diff
 #[derive(Debug, PartialEq, Clone)]
 pub enum Diff {
@@ -101,29 +107,15 @@ impl Diff {
     }
 
     pub fn is_delete(&self) -> bool {
-        match self {
-            Diff::Delete(_) => true,
-            _ => false,
-        }
+        matches!(self, Diff::Delete(_))
     }
 
     pub fn is_insert(&self) -> bool {
-        match self {
-            Diff::Insert(_) => true,
-            _ => false,
-        }
+        matches!(self, Diff::Insert(_))
     }
 
     pub fn is_equal(&self) -> bool {
-        match self {
-            Diff::Equal(_) => true,
-            _ => false,
-        }
-    }
-
-    /// If the text if empty, then it's a no-op
-    pub fn is_nop(&self) -> bool {
-        self.text().is_empty()
+        matches!(self, Diff::Equal(_))
     }
 }
 
@@ -165,8 +157,8 @@ impl DiffMatchPatch {
         }
         let len1 = text1.len();
         let len2 = text2.len();
-        let mut patern: Vec<usize> = Vec::new();
-        patern.push(0);
+        let mut pattern: Vec<usize> = Vec::new();
+        pattern.push(0);
         let mut len = 0;
         let mut i = 1;
 
@@ -174,13 +166,13 @@ impl DiffMatchPatch {
         while i < len2 {
             if text2[i] == text2[len] {
                 len += 1;
-                patern.push(len);
+                pattern.push(len);
                 i += 1;
             } else if len == 0 {
-                patern.push(0);
+                pattern.push(0);
                 i += 1;
             } else {
-                len = patern[len - 1];
+                len = pattern[len - 1];
             }
         }
         i = ind;
@@ -195,7 +187,7 @@ impl DiffMatchPatch {
             } else if len == 0 {
                 i += 1;
             } else {
-                len = patern[len - 1];
+                len = pattern[len - 1];
             }
         }
         None
@@ -220,8 +212,8 @@ impl DiffMatchPatch {
             return None;
         }
         let len2 = text2.len();
-        let mut patern: Vec<usize> = Vec::new();
-        patern.push(0);
+        let mut pattern: Vec<usize> = Vec::new();
+        pattern.push(0);
         let mut len = 0;
         let mut i = 1;
 
@@ -229,13 +221,13 @@ impl DiffMatchPatch {
         while i < len2 {
             if text2[i] == text2[len] {
                 len += 1;
-                patern.push(len);
+                pattern.push(len);
                 i += 1;
             } else if len == 0 {
-                patern.push(0);
+                pattern.push(0);
                 i += 1;
             } else {
-                len = patern[len - 1];
+                len = pattern[len - 1];
             }
         }
         i = 0;
@@ -247,12 +239,12 @@ impl DiffMatchPatch {
                 i += 1;
                 if len == len2 {
                     ans = i - len;
-                    len = patern[len - 1];
+                    len = pattern[len - 1];
                 }
             } else if len == 0 {
                 i += 1;
             } else {
-                len = patern[len - 1];
+                len = pattern[len - 1];
             }
         }
         if ans == usize::MAX {
@@ -270,7 +262,7 @@ impl DiffMatchPatch {
         diffs: Vector of diffs as changes.
         lineArray: Vector of unique strings.
     */
-    pub fn diff_chars_to_lines(&self, diffs: &mut Vec<Diff>, line_array: &[Chars]) {
+    pub fn diff_chars_to_lines(&self, diffs: &mut [Diff], line_array: &[Chars]) {
         for diff in diffs.iter_mut() {
             let mut text = Chars::new();
             let text1 = diff.text();
@@ -291,9 +283,7 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the start of each chars.
     */
-    pub fn diff_common_prefix<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
-        let text1 = text1.as_ref();
-        let text2 = text2.as_ref();
+    pub fn diff_common_prefix(&self, text1: &[char], text2: &[char]) -> usize {
         // Quick check for common null cases
         if text1.is_empty() || text2.is_empty() || text1[0] != text2[0] {
             return 0;
@@ -321,10 +311,7 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the end of each chars.
     */
-    pub fn diff_common_suffix<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
-        let text1 = text1.as_ref();
-        let text2 = text2.as_ref();
-
+    pub fn diff_common_suffix(&self, text1: &[char], text2: &[char]) -> usize {
         if text1.is_empty() || text2.is_empty() {
             return 0;
         }
@@ -354,10 +341,7 @@ impl DiffMatchPatch {
           The number of characters common to the end of the first
           chars and the start of the second chars.
     */
-    pub fn diff_common_overlap<T: AsRef<[char]>>(&self, text1: T, text2: T) -> usize {
-        let text1 = text1.as_ref();
-        let text2 = text2.as_ref();
-
+    pub fn diff_common_overlap(&self, text1: &[char], text2: &[char]) -> usize {
         // Eliminate the null case.
         if text1.is_empty() || text2.is_empty() {
             return 0;
@@ -418,9 +402,6 @@ impl DiffMatchPatch {
         text2: &'a [char],
     ) -> Option<Vec<&'a [char]>> {
         self.diff_timeout?;
-
-        let text1 = text1;
-        let text2 = text2;
 
         let (long_text, short_text) = if text1.len() > text2.len() {
             (text1, text2)
@@ -556,7 +537,7 @@ impl DiffMatchPatch {
     Returns:
         Encoded string.
     */
-    pub fn diff_lines_to_chars_munge<'a>(
+    fn diff_lines_to_chars_munge<'a>(
         &self,
         text: &[char],
         linearray: &'a mut Vec<Chars>,
@@ -606,7 +587,7 @@ impl DiffMatchPatch {
         if diffs.is_empty() {
             return;
         }
-        diffs.push(Diff::Equal("".into()));
+        diffs.push(Diff::empty());
         let mut text_insert = Chars::new();
         let mut text_delete = Chars::new();
         let mut i: usize = 0;
@@ -996,7 +977,6 @@ impl DiffMatchPatch {
                     // Reverse overlap found.
                     // Insert an equality and swap and trim the surrounding edits.
                     diffs.insert(i, Diff::Equal(deletion[..overlap_length2].into()));
-                    // let insertion_vec_len = insertion_vec.len();
                     diffs[i - 1] =
                         Diff::Insert(insertion[..insertion.len() - overlap_length2].into());
                     diffs[i + 1] = Diff::Delete(deletion[overlap_length2..].into());
@@ -1015,7 +995,7 @@ impl DiffMatchPatch {
       Args:
           diffs: Vector of diff object.
     */
-    pub fn diff_cleanup_efficiency(&mut self, diffs: &mut Vec<Diff>) {
+    pub fn diff_cleanup_efficiency(&self, diffs: &mut Vec<Diff>) {
         if diffs.is_empty() {
             return;
         }
@@ -1165,7 +1145,7 @@ impl DiffMatchPatch {
         let mut chars2 = 0;
         let mut last_chars1 = 0;
         let mut last_chars2 = 0;
-        let mut lastdiff = Diff::Equal("".into());
+        let mut lastdiff = Diff::empty();
         let z = 0;
         for diffs_item in diffs {
             if !diffs_item.is_insert() {
@@ -1246,7 +1226,7 @@ impl DiffMatchPatch {
         self.diff_bisect_internal(text1, text2, Instant::now())
     }
 
-    pub fn diff_bisect_internal(
+    fn diff_bisect_internal(
         &mut self,
         text1: &[char],
         text2: &[char],
@@ -1638,7 +1618,7 @@ impl DiffMatchPatch {
 
         // Rediff any replacement blocks, this time character-by-character.
         // Add a dummy entry at the end.
-        diffs.push(Diff::Equal("".into()));
+        diffs.push(Diff::empty());
         let mut count_delete = 0;
         let mut count_insert = 0;
         let mut text_delete = Chars::new();
