@@ -67,6 +67,20 @@ impl Chars {
             &self[i as usize..]
         }
     }
+
+    /// Translate char map
+    pub(crate) fn translate<T: Clone>(&self, item_array: &[T]) -> Vec<T> {
+        self.iter()
+            .map(|c| {
+                let mut idx = *c as usize;
+                if idx > 55296 {
+                    // in hex: 0xD800
+                    idx -= 2048; // in hex: 0x800
+                }
+                item_array[idx].clone()
+            })
+            .collect()
+    }
 }
 
 impl PartialEq<[char]> for Chars {

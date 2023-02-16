@@ -1,9 +1,6 @@
-use core::char;
-
 use std::{
     collections::HashMap,
-    iter::FromIterator,
-    result::Result,
+    hash::Hash,
     time::{Duration, Instant},
 };
 
@@ -66,10 +63,10 @@ impl Default for DiffMatchPatch {
 
 /// The data structure representing a diff
 #[derive(Debug, PartialEq, Clone)]
-pub enum Diff {
-    Delete(Chars),
-    Insert(Chars),
-    Equal(Chars),
+pub enum Diff<T = Chars> {
+    Delete(T),
+    Insert(T),
+    Equal(T),
 }
 
 impl Diff {
@@ -105,11 +102,14 @@ impl Diff {
     pub fn is_equal(&self) -> bool {
         matches!(self, Diff::Equal(_))
     }
-}
 
-trait StringView {
-    fn len(&self) -> usize;
-    fn slice(&self, range: std::ops::Range<usize>) -> Result<String, std::string::FromUtf16Error>;
+    pub fn translate<T: Clone>(&self, item_array: &[T]) -> Diff<Vec<T>> {
+        match self {
+            Diff::Delete(chars) => Diff::Delete(chars.translate(item_array)),
+            Diff::Insert(chars) => Diff::Insert(chars.translate(item_array)),
+            Diff::Equal(chars) => Diff::Equal(chars.translate(item_array)),
+        }
+    }
 }
 
 impl DiffMatchPatch {
@@ -488,6 +488,69 @@ impl DiffMatchPatch {
         vec![]
     }
 
+    pub fn diff_chars_to_any<T>(&self, diffs: &[Diff], item_array: &[T]) -> Vec<Diff<Vec<T>>>
+    where
+        T: Clone,
+    {
+        let mut result = Vec::with_capacity(diffs.len());
+        for diff in diffs {
+            result.push(diff.translate(item_array))
+        }
+        result
+    }
+
+    /// Reduce the sequences to a string
+    // of hashes where each Unicode character represents one item.
+    pub fn diff_any_to_chars<T>(&self, seq1: &[T], seq2: &[T]) -> (Chars, Chars, Vec<T>)
+    where
+        T: Hash + Eq + Clone + Default,
+    {
+        let mut itemarray: Vec<T> = vec![T::default()];
+        let mut itemhash: HashMap<T, u32> = HashMap::new();
+        let chars1 = self.diff_any_to_chars_munge(seq1, &mut itemarray, &mut itemhash);
+        let chars2 = self.diff_any_to_chars_munge(seq2, &mut itemarray, &mut itemhash);
+        (chars1, chars2, itemarray)
+    }
+
+    fn diff_any_to_chars_munge<T>(
+        &self,
+        seq: &[T],
+        itemarray: &mut Vec<T>,
+        itemhash: &mut HashMap<T, u32>,
+    ) -> Chars
+    where
+        T: Hash + Eq + Clone + Default,
+    {
+        let mut chars = Chars::new();
+        for item in seq {
+            if let Some(ch) = itemhash.get(item) {
+                if let Some(ch) = char::from_u32(*ch) {
+                    chars.push(ch);
+                } else {
+                    panic!("Invalid char");
+                }
+            } else {
+                let mut u32char = itemarray.len() as u32;
+                // skip reserved range - U+D800 to U+DFFF
+                // unicode code points in this range can't be converted to unicode scalars
+                if u32char >= 55296 {
+                    u32char += 2048;
+                }
+
+                // 1114111 is the biggest unicode scalar, so stop here
+                if u32char == 1114111 {
+                    panic!("max unicode scalar reached");
+                }
+
+                itemarray.push(item.clone());
+                itemhash.insert(item.clone(), u32char);
+
+                chars.push(char::from_u32(u32char).unwrap());
+            }
+        }
+        chars
+    }
+
     /**
     Split two texts into an array of strings.  Reduce the texts to a string
     of hashes where each Unicode character represents one line.
@@ -506,10 +569,9 @@ impl DiffMatchPatch {
         text1: &[char],
         text2: &[char],
     ) -> (Chars, Chars, Vec<Chars>) {
-        let mut linearray: Vec<Chars> = vec!["".into()];
+        let mut linearray: Vec<Chars> = vec![Chars::new()];
         let mut linehash: HashMap<Chars, u32> = HashMap::new();
         let chars1 = self.diff_lines_to_chars_munge(text1, &mut linearray, &mut linehash);
-        //       let mut dmp = DiffMatchPatch::new();
         let chars2 = self.diff_lines_to_chars_munge(text2, &mut linearray, &mut linehash);
         (chars1, chars2, linearray)
     }
@@ -1435,7 +1497,7 @@ impl DiffMatchPatch {
     Returns:
         Vector of diffs as changes.
     */
-    pub fn diff_main(&mut self, text1: &[char], text2: &[char], checklines: bool) -> Vec<Diff> {
+    pub fn diff_main(&self, text1: &[char], text2: &[char], checklines: bool) -> Vec<Diff> {
         self.diff_main_internal(text1, text2, checklines, Instant::now())
     }
 
