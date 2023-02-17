@@ -153,7 +153,7 @@ impl DiffMatchPatch {
     Returns:
         the first index where patern is found or -1 if not found.
     */
-    fn kmp(&self, text1: &[char], text2: &[char], ind: usize) -> Option<usize> {
+    fn kmp<T: PartialEq>(&self, text1: &[T], text2: &[T], ind: usize) -> Option<usize> {
         if text2.is_empty() {
             return Some(ind);
         }
@@ -209,7 +209,7 @@ impl DiffMatchPatch {
     Returns:
         the last index where patern is found or -1 if not found.
     */
-    fn rkmp(&mut self, text1: &[char], text2: &[char], ind: usize) -> Option<usize> {
+    fn rkmp<T: PartialEq>(&mut self, text1: &[T], text2: &[T], ind: usize) -> Option<usize> {
         if text2.is_empty() {
             return Some(ind);
         }
@@ -260,25 +260,6 @@ impl DiffMatchPatch {
     }
 
     /**
-    Rehydrate the text in a diff from a string of line hashes to real lines
-    of text.
-
-    Args:
-        diffs: Vector of diffs as changes.
-        lineArray: Vector of unique strings.
-    */
-    pub fn diff_chars_to_lines(&self, diffs: &mut [Diff], line_array: &[Chars]) {
-        for diff in diffs.iter_mut() {
-            let mut text = Chars::new();
-            let text1 = diff.text();
-            for j in 0..text1.len() {
-                text += &line_array[text1[j] as usize];
-            }
-            *diff.text_mut() = text;
-        }
-    }
-
-    /**
       Determine the common prefix of two strings.
 
       Args:
@@ -288,7 +269,7 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the start of each chars.
     */
-    pub fn diff_common_prefix(&self, text1: &[char], text2: &[char]) -> usize {
+    pub fn diff_common_prefix<T: PartialEq>(&self, text1: &[T], text2: &[T]) -> usize {
         // Quick check for common null cases
         if text1.is_empty() || text2.is_empty() || text1[0] != text2[0] {
             return 0;
@@ -316,7 +297,7 @@ impl DiffMatchPatch {
       Returns:
           The number of characters common to the end of each chars.
     */
-    pub fn diff_common_suffix(&self, text1: &[char], text2: &[char]) -> usize {
+    pub fn diff_common_suffix<T: PartialEq>(&self, text1: &[T], text2: &[T]) -> usize {
         if text1.is_empty() || text2.is_empty() {
             return 0;
         }
@@ -346,7 +327,7 @@ impl DiffMatchPatch {
           The number of characters common to the end of the first
           chars and the start of the second chars.
     */
-    pub fn diff_common_overlap(&self, text1: &[char], text2: &[char]) -> usize {
+    pub fn diff_common_overlap<T: PartialEq>(&self, text1: &[T], text2: &[T]) -> usize {
         // Eliminate the null case.
         if text1.is_empty() || text2.is_empty() {
             return 0;
@@ -401,11 +382,11 @@ impl DiffMatchPatch {
         the prefix of text2, the suffix of text2 and the common middle.  Or empty vector
         if there was no match.
     */
-    pub fn diff_half_match<'a>(
+    pub fn diff_half_match<'a, T: PartialEq + Copy>(
         &self,
-        text1: &'a [char],
-        text2: &'a [char],
-    ) -> Option<Vec<&'a [char]>> {
+        text1: &'a [T],
+        text2: &'a [T],
+    ) -> Option<Vec<&'a [T]>> {
         self.diff_timeout?;
 
         let (long_text, short_text) = if text1.len() > text2.len() {
@@ -417,7 +398,7 @@ impl DiffMatchPatch {
             return None;
         }
 
-        let mut hm: Vec<&[char]>;
+        let mut hm: Vec<&[T]>;
         // First check if the second quarter is the seed for a half-match.
         let hm1 = self.diff_half_matchi(long_text, short_text, (long_text.len() + 3) / 4);
         // Check again based on the third quarter.
@@ -466,19 +447,19 @@ impl DiffMatchPatch {
         longtext, the prefix of shorttext, the suffix of shorttext and the
         common middle.  Or empty vector if there was no match.
     */
-    fn diff_half_matchi<'a>(
+    fn diff_half_matchi<'a, T: PartialEq + Copy>(
         &self,
-        long_text: &'a [char],
-        short_text: &'a [char],
+        long_text: &'a [T],
+        short_text: &'a [T],
         i: usize,
-    ) -> Vec<&'a [char]> {
+    ) -> Vec<&'a [T]> {
         let long_len = long_text.len();
         let seed = Vec::from_iter(long_text[i..(i + long_len / 4)].iter().cloned());
-        let mut best_common: &[char] = &[];
-        let mut best_longtext_a: &[char] = &[];
-        let mut best_longtext_b: &[char] = &[];
-        let mut best_shorttext_a: &[char] = &[];
-        let mut best_shorttext_b: &[char] = &[];
+        let mut best_common: &[T] = &[];
+        let mut best_longtext_a: &[T] = &[];
+        let mut best_longtext_b: &[T] = &[];
+        let mut best_shorttext_a: &[T] = &[];
+        let mut best_shorttext_b: &[T] = &[];
         let mut j = self.kmp(short_text, &seed, 0);
         while j.is_some() {
             let prefix_length = self.diff_common_prefix(&long_text[i..], &short_text[j.unwrap()..]);
@@ -567,6 +548,25 @@ impl DiffMatchPatch {
             }
         }
         chars
+    }
+
+    /**
+    Rehydrate the text in a diff from a string of line hashes to real lines
+    of text.
+
+    Args:
+        diffs: Vector of diffs as changes.
+        lineArray: Vector of unique strings.
+    */
+    pub fn diff_chars_to_lines(&self, diffs: &mut [Diff], line_array: &[Chars]) {
+        for diff in diffs.iter_mut() {
+            let mut text = Chars::new();
+            let text1 = diff.text();
+            for j in 0..text1.len() {
+                text += &line_array[text1[j] as usize];
+            }
+            *diff.text_mut() = text;
+        }
     }
 
     /**
@@ -1302,10 +1302,10 @@ impl DiffMatchPatch {
                     format!("<ins>{text}</ins>")
                 }
                 Diff::Delete(text) => {
-                    format!("<del>{}</del>", text.len())
+                    format!("<del>{text}</del>")
                 }
                 Diff::Equal(text) => {
-                    format!("{}", text.len())
+                    format!("{text}")
                 }
             })
             .collect::<Vec<_>>()
