@@ -1,5 +1,3 @@
-
-
 use criterion::{criterion_group, criterion_main, Criterion};
 
 pub fn speedtest_this(c: &mut Criterion) {

@@ -122,9 +122,9 @@ impl<T> Diff<T> {
 impl<T: fmt::Debug> fmt::Debug for Diff<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Diff::Delete(text) => write!(f, "- {:?}", text),
-            Diff::Insert(text) => write!(f, "+ {:?}", text),
-            Diff::Equal(text) => write!(f, "= {:?}", text),
+            Diff::Delete(text) => write!(f, "- {text:?}"),
+            Diff::Insert(text) => write!(f, "+ {text:?}"),
+            Diff::Equal(text) => write!(f, "= {text:?}"),
         }
     }
 }
@@ -1067,6 +1067,9 @@ impl DiffMatchPatch {
 
       Args:
           diffs: Vector of diff object.
+
+    Affected By:
+        edit_cost
     */
     pub fn diff_cleanup_efficiency(&self, diffs: &mut Vec<Diff>) {
         if diffs.is_empty() {
@@ -1334,25 +1337,25 @@ impl DiffMatchPatch {
         text2: &[char],
         start_time: Instant,
     ) -> Vec<Diff> {
-        let text1_length = text1.len() as i32;
-        let text2_length = text2.len() as i32;
-        let max_d: i32 = (text1_length + text2_length + 1) / 2;
-        let v_offset: i32 = max_d;
-        let v_length: i32 = 2 * max_d;
-        let mut v1: Vec<i32> = vec![-1; v_length as usize];
-        let mut v2: Vec<i32> = vec![-1; v_length as usize];
+        let text1_length = text1.len() as isize;
+        let text2_length = text2.len() as isize;
+        let max_d: isize = (text1_length + text2_length + 1) / 2;
+        let v_offset: isize = max_d;
+        let v_length: isize = 2 * max_d;
+        let mut v1: Vec<isize> = vec![-1; v_length as usize];
+        let mut v2: Vec<isize> = vec![-1; v_length as usize];
         v1[v_offset as usize + 1] = 0;
         v2[v_offset as usize + 1] = 0;
-        let delta: i32 = text1_length - text2_length;
+        let delta: isize = text1_length - text2_length;
         // If the total number of characters is odd, then the front path will
         // collide with the reverse path.
-        let front: i32 = (delta % 2 != 0) as i32;
+        let front: isize = (delta % 2 != 0) as isize;
         // Offsets for start and end of k loop.
         // Prevents mapping of space beyond the grid.
-        let mut k1start: i32 = 0;
-        let mut k1end: i32 = 0;
-        let mut k2start: i32 = 0;
-        let mut k2end: i32 = 0;
+        let mut k1start: isize = 0;
+        let mut k1end: isize = 0;
+        let mut k2start: isize = 0;
+        let mut k2end: isize = 0;
         for d in 0..max_d {
             if self.diff_timeout.is_some()
                 && start_time.elapsed() >= *self.diff_timeout.as_ref().unwrap()
@@ -1362,8 +1365,8 @@ impl DiffMatchPatch {
 
             let d1 = d;
             let mut k1 = -d1 + k1start;
-            let mut x1: i32;
-            let mut k1_offset: i32;
+            let mut x1: isize;
+            let mut k1_offset: isize;
             let mut k2_offset;
             let mut x2;
             let mut y1;
