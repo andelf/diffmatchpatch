@@ -82,7 +82,7 @@ pub fn split_blocks(page: &str) -> Vec<&str> {
                     start = end;
                     end = start + line.len();
                     prefix = "";
-                } else if prefix == "" && line.contains(":: ") {
+                } else if prefix.is_empty() && line.contains(":: ") {
                     // global property line
                     if start != end {
                         blocks.push(&page[start..end]);
@@ -109,11 +109,11 @@ fn main() {
     let ab = split_blocks(a);
     let bb = split_blocks(b);
 
-    let mut dmp = DiffMatchPatch::new();
+    let dmp = DiffMatchPatch::new();
 
     let (ac, bc, item_array) = dmp.diff_any_to_chars(&ab, &bb);
 
-    println!("{:?} {:?}\n{:#?}", ac, bc, item_array);
+    println!("{ac:?} {bc:?}\n{item_array:#?}");
     let mut diffs = dmp.diff_main(&ac, &bc, false);
 
     //dmp.diff_cleanup_merge(&mut diffs);
@@ -121,6 +121,6 @@ fn main() {
 
     let new_diffs = dmp.diff_chars_to_any(&mut diffs, &item_array);
 
-    println!("=> {:#?}", new_diffs);
+    println!("=> {new_diffs:#?}");
     println!("diffs => {}", new_diffs.len());
 }

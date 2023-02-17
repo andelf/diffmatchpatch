@@ -1217,7 +1217,7 @@ impl DiffMatchPatch {
             }
             if chars1 > loc {
                 // Overshot the location.
-                lastdiff = &diffs_item;
+                lastdiff = diffs_item;
                 break;
             }
             last_chars1 = chars1;
@@ -1288,7 +1288,7 @@ impl DiffMatchPatch {
             .iter()
             .map(|d| match d {
                 Diff::Insert(text) => {
-                    format!("<ins>{}</ins>", text)
+                    format!("<ins>{text}</ins>")
                 }
                 Diff::Delete(text) => {
                     format!("<del>{}</del>", text.len())

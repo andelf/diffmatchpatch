@@ -780,12 +780,10 @@ fn diff_xindex() {
 
     let dmp = DiffMatchPatch::new();
 
-    //self.assertEqual(5, self.dmp.diff_xIndex([(self.dmp.DIFF_DELETE, "a"), (self.dmp.DIFF_INSERT, "1234"), (self.dmp.DIFF_EQUAL, "xyz")], 2))
     let diffs = vec![Delete("a".into()), Insert("1234".into()), Equal("xyz".into())];
     assert_eq!(5, dmp.diff_xindex(&diffs, 2));
 
     // Translation on deletion.
-    //self.assertEqual(1, self.dmp.diff_xIndex([(self.dmp.DIFF_EQUAL, "a"), (self.dmp.DIFF_DELETE, "1234"), (self.dmp.DIFF_EQUAL, "xyz")], 3))
     let diffs = vec![Equal("a".into()), Delete("1234".into()), Equal("xyz".into())];
     assert_eq!(1, dmp.diff_xindex(&diffs, 3));
 }

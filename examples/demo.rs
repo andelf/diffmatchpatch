@@ -17,9 +17,9 @@ From wicked puns and stupid jokes to anvils that drop on your head."#;
 
     // Semantic Cleanup
     let diffs = diff_semantic(text2, text1);
-    println!("Semantic diffs {:#?}", diffs);
+    println!("Semantic diffs {diffs:#?}");
 
     // Word mode
     let diffs = diff_word_mode(text2, text1);
-    println!("Word diffs {:#?}", diffs);
+    println!("Word diffs {diffs:#?}");
 }
