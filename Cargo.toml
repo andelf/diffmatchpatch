@@ -2,14 +2,14 @@
 name = "diffmatchpatch"
 publish = true
 edition = "2021"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Andelf <andelf@gmail.com>"]
 description = "Rewrite of diff-match-patch in Rust"
 homepage = "https://github.com/andelf/diffmatchpatch"
 repository = "https://github.com/andelf/diffmatchpatch"
 keywords = ["dmp", "diff", "diff-match-patch"]
 categories = ["algorithms", "text-editors", "text-processing"]
-license = "MIT"
+license = "MIT/Apache-2.0"
 
 [dependencies]
 percent-encoding = "2.2.0"
