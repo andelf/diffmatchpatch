@@ -56,7 +56,7 @@ This code is forked originally from [dmp](https://github.com/surrealdb/dmp), lic
 
 ## speedtest
 
-On a M1 Pro MacBook Pro:
+On an M1 Pro MacBook Pro:
 
 ```text
 Python3                         8.695004s
