@@ -5,9 +5,10 @@ The Diff Match and Patch libraries offer robust algorithms to perform the operat
 ## Modification Compared to the Upstream
 
 - Use `Chars(Vec<char>)` to represent text instead of `String` to avoid unnecessary traversing of the string
-- Extend `diff_lines_to_chars` to `diff_any_to_chars` to support lines, text blocks, any sequence of comparable items
-- Test cases from [distill-io/diff-match-patch.rs](https://github.com/distill-io/diff-match-patch.rs)
+- Extend `diff_lines_to_chars` to `diff_any_to_chars` to support words, lines, text blocks, and any sequence of comparable items
+- Test cases from [google/diff-match-patch](https://github.com/google/diff-match-patch) and [distill-io/diff-match-patch.rs](https://github.com/distill-io/diff-match-patch.rs)
 - [ ] Implement the `patch` part
+- Helper `prelude` mod
 
 ## Demo
 
