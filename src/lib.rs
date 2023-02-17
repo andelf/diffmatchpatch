@@ -10,6 +10,7 @@ pub use patch::Patch;
 pub mod chars;
 mod r#match;
 mod patch;
+pub mod prelude;
 
 pub trait ToChars {
     fn to_chars(&self) -> Vec<char>;
@@ -102,12 +103,17 @@ impl Diff {
     pub fn is_equal(&self) -> bool {
         matches!(self, Diff::Equal(_))
     }
+}
 
-    pub fn translate<T: Clone>(&self, item_array: &[T]) -> Diff<Vec<T>> {
+impl<T> Diff<T> {
+    pub fn translate<P, F>(&self, f: F) -> Diff<P>
+    where
+        F: Fn(&T) -> P,
+    {
         match self {
-            Diff::Delete(chars) => Diff::Delete(chars.translate(item_array)),
-            Diff::Insert(chars) => Diff::Insert(chars.translate(item_array)),
-            Diff::Equal(chars) => Diff::Equal(chars.translate(item_array)),
+            Diff::Delete(chars) => Diff::Delete(f(chars)),
+            Diff::Insert(chars) => Diff::Insert(f(chars)),
+            Diff::Equal(chars) => Diff::Equal(f(chars)),
         }
     }
 }
@@ -488,13 +494,14 @@ impl DiffMatchPatch {
         vec![]
     }
 
+    /// Recover compressed chars to array of any type
     pub fn diff_chars_to_any<T>(&self, diffs: &[Diff], item_array: &[T]) -> Vec<Diff<Vec<T>>>
     where
         T: Clone,
     {
         let mut result = Vec::with_capacity(diffs.len());
         for diff in diffs {
-            result.push(diff.translate(item_array))
+            result.push(diff.translate(|t| t.translate(item_array)))
         }
         result
     }
@@ -1104,16 +1111,13 @@ impl DiffMatchPatch {
                                 == 3))
                 {
                     // Duplicate record.
-                    diffs.insert(
-                        equalities[equalities.len() - 1],
-                        Diff::Delete(last_equality.clone()),
-                    );
+                    diffs.insert(equalities[equalities.len() - 1], Diff::Delete(last_equality));
                     // Change second copy to insert.
                     diffs[equalities[equalities.len() - 1] + 1] =
                         Diff::Insert(diffs[equalities[equalities.len() - 1] + 1].text().clone());
                     equalities.pop(); // Throw away the equality we just deleted.
 
-                    last_equality.clear();
+                    last_equality = Chars::new();
                     if pre_ins && pre_del {
                         // No changes made which could affect previous entry, keep going.
                         post_del = true;
@@ -1127,7 +1131,7 @@ impl DiffMatchPatch {
                             i = equalities[equalities.len() - 1];
                         } else {
                             i = 0;
-                            // FIXME: reorder control flow
+                            // FIXME: reorder control flow. This requires following flag re-init
                             post_ins = false;
                             post_del = false;
                             changes = true;
@@ -1200,7 +1204,7 @@ impl DiffMatchPatch {
         let mut chars2 = 0;
         let mut last_chars1 = 0;
         let mut last_chars2 = 0;
-        let mut lastdiff = Diff::empty();
+        let mut lastdiff = &Diff::empty();
         let z = 0;
         for diffs_item in diffs {
             if !diffs_item.is_insert() {
@@ -1213,7 +1217,7 @@ impl DiffMatchPatch {
             }
             if chars1 > loc {
                 // Overshot the location.
-                lastdiff = diffs_item.clone();
+                lastdiff = &diffs_item;
                 break;
             }
             last_chars1 = chars1;
@@ -1277,6 +1281,24 @@ impl DiffMatchPatch {
 
     pub fn diff_from_delta(&self, _text1: &mut Chars, _delta: &str) {
         unimplemented!()
+    }
+
+    pub fn diff_to_html(&self, diffs: &[Diff]) -> String {
+        diffs
+            .iter()
+            .map(|d| match d {
+                Diff::Insert(text) => {
+                    format!("<ins>{}</ins>", text)
+                }
+                Diff::Delete(text) => {
+                    format!("<del>{}</del>", text.len())
+                }
+                Diff::Equal(text) => {
+                    format!("{}", text.len())
+                }
+            })
+            .collect::<Vec<_>>()
+            .concat()
     }
 
     /**
@@ -1732,5 +1754,5 @@ impl DiffMatchPatch {
 
     // unimplemented:
     // DiffPrettyHtml
-    // DiffToDelta
+    // DiffFromDelta
 }
