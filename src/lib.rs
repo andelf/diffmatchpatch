@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt,
     hash::Hash,
     time::{Duration, Instant},
 };
@@ -63,7 +64,7 @@ impl Default for DiffMatchPatch {
 }
 
 /// The data structure representing a diff
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Diff<T = Chars> {
     Delete(T),
     Insert(T),
@@ -114,6 +115,16 @@ impl<T> Diff<T> {
             Diff::Delete(chars) => Diff::Delete(f(chars)),
             Diff::Insert(chars) => Diff::Insert(f(chars)),
             Diff::Equal(chars) => Diff::Equal(f(chars)),
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Diff<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Diff::Delete(text) => write!(f, "- {:?}", text),
+            Diff::Insert(text) => write!(f, "+ {:?}", text),
+            Diff::Equal(text) => write!(f, "= {:?}", text),
         }
     }
 }
