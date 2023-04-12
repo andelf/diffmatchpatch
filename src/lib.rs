@@ -45,9 +45,9 @@ pub struct DiffMatchPatch {
     /// 1.0 to the score (0.0 is a perfect match).*/
     pub match_distance: i32,
     /// Chunk size for context length.
-    pub patch_margin: i32,
+    pub patch_margin: usize,
     /// The number of bits in an int.
-    pub match_maxbits: i32,
+    pub match_maxbits: usize,
     /// At what point is no match declared (0.0 = perfection, 1.0 = very loose).
     pub match_threshold: f32,
     // When deleting a large block of text (over ~64 characters), how close do
@@ -509,6 +509,23 @@ impl DiffMatchPatch {
         let chars1 = self.diff_any_to_chars_munge(seq1, &mut item_array, &mut itemhash);
         let chars2 = self.diff_any_to_chars_munge(seq2, &mut item_array, &mut itemhash);
         (chars1, chars2, item_array)
+    }
+
+    pub fn diff_any3_to_chars<T>(
+        &self,
+        seq1: &[T],
+        seq2: &[T],
+        seq3: &[T],
+    ) -> (Chars, Chars, Chars, Vec<T>)
+    where
+        T: Hash + Eq + Clone + Default,
+    {
+        let mut item_array: Vec<T> = vec![T::default()];
+        let mut itemhash: HashMap<T, u32> = HashMap::new();
+        let chars1 = self.diff_any_to_chars_munge(seq1, &mut item_array, &mut itemhash);
+        let chars2 = self.diff_any_to_chars_munge(seq2, &mut item_array, &mut itemhash);
+        let chars3 = self.diff_any_to_chars_munge(seq3, &mut item_array, &mut itemhash);
+        (chars1, chars2, chars3, item_array)
     }
 
     fn diff_any_to_chars_munge<T>(
@@ -982,12 +999,9 @@ impl DiffMatchPatch {
                     && last_equality.len() <= usize::max(length_insertions2, length_deletions2)
                 {
                     // Duplicate record.
-                    diffs.insert(
-                        equalities[equalities.len() - 1],
-                        Diff::Delete(last_equality.clone()),
-                    );
+                    diffs.insert(*equalities.last().unwrap(), Diff::Delete(last_equality.clone()));
                     // Change second copy to insert.
-                    diffs[equalities[equalities.len() - 1] + 1] =
+                    diffs[*equalities.last().unwrap() + 1] =
                         Diff::Insert(diffs[equalities[equalities.len() - 1] + 1].text().into());
                     // Throw away the equality we just deleted.
                     equalities.pop();
@@ -1005,7 +1019,7 @@ impl DiffMatchPatch {
 
                     // NOT: reordered control flow, to use continue
                     if !equalities.is_empty() {
-                        i = equalities[equalities.len() - 1];
+                        i = *equalities.last().unwrap();
                     } else {
                         i = 0;
                         continue;
@@ -1065,14 +1079,14 @@ impl DiffMatchPatch {
       Reduce the number of edits by eliminating operationally trivial
       equalities.
 
-      Args:
-          diffs: Vector of diff object.
+    Args:
+        diffs: Vector of diff object.
 
     Affected By:
         edit_cost
     */
     pub fn diff_cleanup_efficiency(&self, diffs: &mut Vec<Diff>) {
-        if diffs.is_empty() {
+        if diffs.len() <= 1 {
             return;
         }
         let mut changes: bool = false;
@@ -1093,7 +1107,7 @@ impl DiffMatchPatch {
                     last_equality = diffs[i].text().clone();
                 } else {
                     // Not a candidate, and can never become one.
-                    equalities = vec![];
+                    equalities.clear();
                     // last_equality.clear();
                 }
                 post_ins = false;
@@ -1136,13 +1150,13 @@ impl DiffMatchPatch {
                         // No changes made which could affect previous entry, keep going.
                         post_del = true;
                         post_ins = true;
-                        equalities = vec![];
+                        equalities.clear();
                     } else {
                         if !equalities.is_empty() {
                             equalities.pop(); // Throw away the previous equality.
                         }
                         if !equalities.is_empty() {
-                            i = equalities[equalities.len() - 1];
+                            i = *equalities.last().unwrap();
                         } else {
                             i = 0;
                             // FIXME: reorder control flow. This requires following flag re-init
@@ -1769,4 +1783,160 @@ impl DiffMatchPatch {
     // unimplemented:
     // DiffPrettyHtml
     // DiffFromDelta
+
+    /// Patch make method 1
+    /// a = text1, b = text2
+    pub fn patch_make1(&mut self, text1: &[char], text2: &[char]) -> Vec<Patch> {
+        let checklines = false;
+        let mut diffs = self.diff_main(text1, text2, checklines);
+        if diffs.len() > 2 {
+            if checklines {
+                self.diff_cleanup_semantic(&mut diffs);
+            }
+            self.diff_cleanup_efficiency(&mut diffs);
+        }
+
+        if diffs.is_empty() {
+            return vec![];
+        }
+
+        let mut patches = vec![];
+        let mut patch = Patch::default();
+
+        let mut char_count1 = 0;
+        let mut char_count2 = 0;
+
+        let mut prepatch_text: Vec<_> = text1.to_vec();
+        let mut postpatch_text: Vec<_> = text1.to_vec();
+
+        for (x, diff) in diffs.iter().enumerate() {
+            if patch.diffs.is_empty() && !diff.is_equal() {
+                // A new patch starts here.
+                patch.start1 = char_count1;
+                patch.start2 = char_count2;
+            }
+
+            if diff.is_insert() {
+                patch.diffs.push(diff.clone());
+                patch.length2 += diff.text().len();
+
+                let tmp = postpatch_text[char_count2..].to_vec();
+                postpatch_text = postpatch_text[..char_count2].to_vec();
+                postpatch_text.extend_from_slice(diff.text());
+                postpatch_text.extend(tmp);
+            } else if diff.is_delete() {
+                patch.length1 += diff.text().len();
+                patch.diffs.push(diff.clone());
+
+                let tmp = postpatch_text[char_count2 + diff.text().len()..].to_vec();
+                postpatch_text = postpatch_text[..char_count2].to_vec();
+                postpatch_text.extend(tmp);
+            } else if diff.is_equal()
+                && diff.text().len() <= 2 * self.patch_margin
+                && !patch.diffs.is_empty()
+                && diffs.len() != x + 1
+            {
+                // Small equality inside a patch.
+                patch.diffs.push(diff.clone());
+                patch.length1 += diff.text().len();
+                patch.length2 += diff.text().len();
+            }
+
+            if diff.is_equal() && diff.text().len() >= 2 * self.patch_margin {
+                // Time for a new patch.
+                if !patch.diffs.is_empty() {
+                    self.patch_add_context(&mut patch, &prepatch_text);
+                    patches.push(patch);
+                    patch = Patch::default();
+                    // Unlike Unidiff, our patch lists have a rolling context.
+                    // http://code.google.com/p/google-diff-match-patch/wiki/Unidiff
+                    // Update prepatch text & pos to reflect the application of the just completed
+                    // patch.
+                    prepatch_text = postpatch_text.to_vec();
+                    char_count1 = char_count2;
+                }
+            }
+
+            // Update the current character count.
+            if !diff.is_insert() {
+                char_count2 += diff.text().len();
+            }
+            if !diff.is_delete() {
+                char_count1 += diff.text().len();
+            }
+        }
+
+        // Pick up the leftover patch if not empty.
+        if !patch.diffs.is_empty() {
+            self.patch_add_context(&mut patch, &prepatch_text);
+            patches.push(patch);
+        }
+
+        patches
+    }
+
+    /*
+    Increase the context until it is unique,
+             but don't let the pattern expand beyond Match_MaxBits.
+
+             Args:
+                 patch: The patch to grow.
+                 text: Source text.
+    */
+    fn patch_add_context(&mut self, patch: &mut Patch, text: &[char]) {
+        if text.is_empty() {
+            return;
+        }
+
+        let mut pattern = &text[patch.start1..patch.start1 + patch.length1];
+        let mut padding = 0;
+
+        // Look for the first and last matches of pattern in text.  If two different
+        // matches are found, increase the pattern length.
+        while text.windows(pattern.len()).filter(|w| *w == pattern).nth(1).is_some()
+            && (self.match_maxbits == 0
+                || (pattern.len() < self.match_maxbits - self.patch_margin * 2))
+        {
+            padding += self.patch_margin;
+            pattern = &text[patch.start2.checked_sub(padding).unwrap_or(0)
+                ..patch.start2 + patch.length1 + padding];
+        }
+
+        // Add one chunk for good luck.
+        padding += self.patch_margin;
+
+        // Add the prefix.
+        // TODO: max 0
+        let prefix = &text[patch.start2.checked_sub(padding).unwrap_or(0)..patch.start2];
+        if !prefix.is_empty() {
+            patch.diffs.insert(0, Diff::Equal(prefix.into()));
+        }
+        // Add the suffix.
+        let suffix = &text[patch.start2 + patch.length1
+            ..usize::min(patch.start2 + patch.length1 + padding, text.len())];
+        if !suffix.is_empty() {
+            patch.diffs.push(Diff::Equal(suffix.into()));
+        }
+
+        // Roll back the start points.
+        patch.start1 -= prefix.len();
+        patch.start2 -= prefix.len();
+
+        // Extend the lengths.
+        patch.length1 += prefix.len() + suffix.len();
+        patch.length2 += prefix.len() + suffix.len();
+    }
+
+    /**
+    Compute a list of patches to turn text1 into text2.
+         Use diffs to compute first text.
+
+         Args:
+             diffs: Vector od diff object.
+         Returns:
+             Vector of Patch objects.
+    */
+    pub fn patch_make2(&mut self, diffs: &mut Vec<Diff>) -> Vec<Patch> {
+        todo!()
+    }
 }

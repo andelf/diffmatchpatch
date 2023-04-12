@@ -48,7 +48,7 @@ impl DiffMatchPatch {
     */
     pub fn match_bitap(&mut self, text: &[char], patern: &[char], loc: usize) -> Option<usize> {
         // check for maxbits limit.
-        if !(self.match_maxbits == 0 || patern.len() as i32 <= self.match_maxbits) {
+        if !(self.match_maxbits == 0 || patern.len() <= self.match_maxbits) {
             panic!("patern too long for this application");
         }
         // Initialise the alphabet.
