@@ -1307,8 +1307,40 @@ impl DiffMatchPatch {
             .join("\t")
     }
 
-    pub fn diff_from_delta(&self, _text1: &mut Chars, _delta: &str) {
-        unimplemented!()
+    pub fn diff_from_delta(&self, text1: &Chars, delta: &str) -> Result<Vec<Diff>, ()> {
+        let mut diffs: Vec<Diff> = vec![];
+        let mut pointer: usize = 0; // Cursor in text1
+        for token in delta.split('\t') {
+            if token.is_empty() {
+                continue;
+            }
+            let (operation, param) = token.split_at(1);
+            if operation == "+" {
+                match Chars::from(param).to_safe_decode() {
+                    Err(_) => return Err(()),
+                    Ok(p) => diffs.push(Diff::Insert(p)),
+                };
+            } else if operation == "-" || operation == "=" {
+                let n: isize = param.parse().map_err(|_| ())?;
+                if n < 0 {
+                    return Err(());
+                }
+                let to = pointer + (n as usize);
+                let text = Chars::from(&text1[pointer..to]);
+                pointer = to;
+                if operation == "=" {
+                    diffs.push(Diff::Equal(text));
+                } else {
+                    diffs.push(Diff::Delete(text));
+                }
+            } else {
+                return Err(());
+            }
+        }
+        if pointer != text1.len() {
+            return Err(());
+        }
+        Ok(diffs)
     }
 
     pub fn diff_to_html(&self, diffs: &[Diff]) -> String {
@@ -1927,15 +1959,6 @@ impl DiffMatchPatch {
         patch.length2 += prefix.len() + suffix.len();
     }
 
-    /**
-    Compute a list of patches to turn text1 into text2.
-         Use diffs to compute first text.
-
-         Args:
-             diffs: Vector od diff object.
-         Returns:
-             Vector of Patch objects.
-    */
     pub fn patch_make2(&mut self, diffs: &mut Vec<Diff>) -> Vec<Patch> {
         todo!()
     }
