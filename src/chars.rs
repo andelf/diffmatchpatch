@@ -1,4 +1,4 @@
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{percent_decode, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use std::{
     borrow::Borrow,
     fmt, mem,
@@ -45,6 +45,14 @@ impl Chars {
 
     pub fn take(&mut self) -> Self {
         Chars(mem::take(&mut self.0))
+    }
+
+    pub fn to_safe_decode(&self) -> Result<Self, ()> {
+        let tmp: &[u8] = &self[..].iter().map(|c| *c as u8).collect::<Vec<_>>();
+        match percent_decode(tmp).decode_utf8() {
+            Err(_) => Err(()),
+            Ok(s) => Ok(Chars::from(s.to_string())),
+        }
     }
 
     pub fn to_safe_encode(&self) -> String {

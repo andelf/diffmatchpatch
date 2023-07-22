@@ -17,8 +17,8 @@ fn patch_obj() {
 
     */
     let p = Patch {
-        start1: Some(20),
-        start2: Some(21),
+        start1: 20,
+        start2: 21,
         length1: 18,
         length2: 17,
         diffs: vec![

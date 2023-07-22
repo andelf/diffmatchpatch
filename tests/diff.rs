@@ -775,6 +775,39 @@ fn diff_to_delta() {
 }
 
 #[test]
+fn diff_from_delta() {
+    let dmp = DiffMatchPatch::new();
+    let text1 = Chars::from("jumps over the lazy");
+    let delta = "=4\t-1\t+ed\t=6\t-3\t+a\t=5\t+old dog";
+    let diffs_computed = dmp.diff_from_delta(&text1, delta);
+    let diffs_expected = vec![
+        Equal("jump".into()),
+        Delete("s".into()),
+        Insert("ed".into()),
+        Equal(" over ".into()),
+        Delete("the".into()),
+        Insert("a".into()),
+        Equal(" lazy".into()),
+        Insert("old dog".into()),
+    ];
+    assert_eq!(Ok(diffs_expected), diffs_computed);
+}
+
+#[test]
+fn diff_from_delta_special_characters() {
+    let dmp = DiffMatchPatch::new();
+    let text1 = Chars::from("\u{0680} \x00 \t %\u{0681} \x01 \n ^");
+    let delta = "=7\t-7\t+%DA%82 %02 %5C %7C";
+    let diffs_computed = dmp.diff_from_delta(&text1, delta);
+    let diffs_expected = vec![
+        Equal("\u{0680} \x00 \t %".into()),
+        Delete("\u{0681} \x01 \n ^".into()),
+        Insert("\u{0682} \x02 \\ |".into()),
+    ];
+    assert_eq!(Ok(diffs_expected), diffs_computed);
+}
+
+#[test]
 fn diff_xindex() {
     // Translate a location in text1 to text2.
 
